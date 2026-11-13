@@ -417,12 +417,15 @@ main.d-main{max-width:1500px;margin:0 auto;padding:26px 24px 30px}
 .tray-h b{font:700 18px var(--fd)}
 .tray-h .cnt{font-size:12px;font-weight:800;background:var(--peach);color:#fff;padding:2px 9px;border-radius:99px}
 .tray-grid{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-.tp{position:relative;width:92px;aspect-ratio:4/3;border-radius:12px;overflow:hidden;border:3px solid transparent;cursor:pointer;transition:transform .2s var(--spring),border-color .2s;animation:thpop .4s var(--spring) both;background:var(--bg2)}
-.tp img{width:100%;height:100%;object-fit:cover;display:block;opacity:.55;transition:opacity .2s}
+.tp{position:relative;width:118px;border-radius:12px;overflow:hidden;border:3px solid transparent;cursor:pointer;transition:transform .2s var(--spring),border-color .2s;animation:thpop .4s var(--spring) both;background:var(--bg2)}
+.tp img{width:100%;height:auto;display:block;opacity:.55;transition:opacity .2s}
+.tp .tbox{position:absolute;border:2px solid var(--peach);border-radius:4px;box-shadow:0 0 0 999px rgba(27,33,64,.25);pointer-events:none}
+.tp .tcrop{position:absolute;left:5px;bottom:5px;width:26px;height:26px;border-radius:9px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.25);font-size:14px;display:grid;place-items:center;transition:transform .2s var(--spring)}
+.tp .tcrop:hover{transform:scale(1.15)}
 .tp.sel{border-color:var(--peach)}
 .tp.sel img{opacity:1}
 .tp:hover{transform:translateY(-2px)}
-.tp i{position:absolute;top:5px;right:5px;width:20px;height:20px;border-radius:50%;background:#fff;border:2px solid #D3DAEA;display:grid;place-items:center;font-style:normal}
+.tp i{z-index:1;position:absolute;top:5px;right:5px;width:20px;height:20px;border-radius:50%;background:#fff;border:2px solid #D3DAEA;display:grid;place-items:center;font-style:normal}
 .tp.sel i{background:var(--peach);border-color:var(--peach);color:#fff}
 .tp i svg{width:12px;height:12px}
 .labelrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
@@ -932,7 +935,7 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
 
     <!-- ================= LIVE ================= -->
     <section class="view" id="v-live">
-      <div class="page-head"><div><div class="kick">Live mode</div><h1>The signal is thinking <span class="badge" id="mpBadge2">AI vision: sleeping</span></h1><p>Every vehicle gets a box, trained or not. Your rules decide what the lights and gates do.</p></div></div>
+      <div class="page-head"><div><div class="kick">Live mode</div><h1>The signal is thinking <span class="badge" id="mpBadge2">AI vision: sleeping</span></h1><p>Every vehicle gets a box, trained or not. <b>First:</b> take the vehicles off the road and press <b>Learn empty road</b> so the AI ignores the tape, shadows and marks.</p></div></div>
       <div class="col">
         <div class="card" style="--i:0">
           <div class="stats">
@@ -947,7 +950,9 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
             <button class="btn pri" data-act="cam"><svg><use href="#i-cam"/></svg><span>Turn camera on</span></button>
             <button class="btn" data-act="flip"><svg><use href="#i-flip"/></svg>Switch camera</button>
             <button class="btn lilac" data-act="mic"><svg><use href="#i-mic"/></svg><span>Turn mic on</span></button>
-            <button class="btn sm" data-act="resetStats" style="margin-left:auto">Reset counters</button>
+            <button class="btn sm sun" data-act="learnBg" style="margin-left:auto" title="Take all vehicles off the road, then press"><svg><use href="#i-road"/></svg>Learn empty road</button>
+            <button class="btn sm hidden" data-act="clearBg" id="clearBgBtn"></button>
+            <button class="btn sm" data-act="resetStats">Reset counters</button>
           </div>
         </div>
         <div class="card" style="--i:1">
@@ -1079,6 +1084,15 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
   </div>
 </div>
 
+<!-- crop box -->
+<div class="scrim" id="cropScrim">
+  <div class="modal" role="dialog" style="width:min(900px,100%)">
+    <header><h2>✂ Box the vehicle</h2><span class="grow"></span><button class="iconbtn" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
+    <div class="body" style="text-align:center"><canvas id="cropC" style="display:block;margin:0 auto;border-radius:16px;cursor:crosshair;touch-action:none;max-width:100%"></canvas><p class="hint" id="cropHint" style="margin-top:10px"></p></div>
+    <footer><label class="row" style="margin-right:auto;font-weight:700;font-size:14px"><span class="switch"><input type="checkbox" id="cropAll"><span></span></span>Use this box for all ticked photos</label><button class="btn" data-act="cropClear">Remove box</button><button class="btn" data-close>Cancel</button><button class="btn peach" data-act="cropUse"><svg><use href="#i-check"/></svg>Use this box</button></footer>
+  </div>
+</div>
+
 <!-- confirm -->
 <div class="scrim" id="cfScrim">
   <div class="modal small" role="alertdialog">
@@ -1130,7 +1144,7 @@ function defaultSettings(){
       {name:'Cross gate', open:90, close:0, mode:'reverse'}
     ],
     sound:{calib:100, gate:50},
-    det:{minScore:25, simThresh:55, maxBoxes:5, anyObject:true}
+    det:{minScore:35, simThresh:55, maxBoxes:5, anyObject:true}
   };
 }
 function defaultRules(){
@@ -1148,7 +1162,8 @@ const S = {
   settings:defaultSettings(),
   rules:defaultRules(),
   algo:{v:'nn', s:'nn', kv:3, ks:3},
-  pending:[],                 // captured photos waiting for a label {id,img,sel}
+  pending:[],
+  ignore:[],                  // empty-road spots the AI should ignore {x,y,w,h} 0..1                 // captured photos waiting for a label {id,img,sel}
   mode:'train', step:'veh'
 };
 function deepMerge(base, add){
@@ -1182,10 +1197,11 @@ async function loadAll(){
   for (const o of kv){
     if (o.k==='vClasses') S.vClasses = o.v;
     if (o.k==='sClasses') S.sClasses = o.v;
-    if (o.k==='settings') S.settings = deepMerge(defaultSettings(), o.v);
+    if (o.k==='settings'){ S.settings = deepMerge(defaultSettings(), o.v); if (!S.settings.v3){ S.settings.det.minScore=Math.max(35, S.settings.det.minScore); S.settings.v3=true; } }
     if (o.k==='rules' && Array.isArray(o.v)) S.rules = o.v;
     if (o.k==='algo') S.algo = {...S.algo, ...o.v};
     if (o.k==='pending' && Array.isArray(o.v)) S.pending = o.v;
+    if (o.k==='ignore' && Array.isArray(o.v)) S.ignore = o.v;
   }
 }
 
@@ -1347,12 +1363,42 @@ function cropTo(src, box, pad=.12){
   return cropC;
 }
 function embedCanvas(c){ const r = MP.emb.embed(c); return l2(r.embeddings[0].floatEmbedding); }
-function detect(src){
+const iou = (a,b) => { const x1=Math.max(a.x,b.x), y1=Math.max(a.y,b.y), x2=Math.min(a.x+a.w,b.x+b.w), y2=Math.min(a.y+a.h,b.y+b.h), i=Math.max(0,x2-x1)*Math.max(0,y2-y1); return i/((a.w*a.h+b.w*b.h-i)||1); };
+// a toy vehicle is never a long thin strip (the road / tape), never huge and never a speck
+function shapeOk(d, W, H){ const ar=d.w/d.h, A=d.w*d.h; return d.w < W*.55 && d.h < H*.6 && A < W*H*.2 && A > W*H*.0015 && ar < 3.2 && ar > 1/3.2; }
+function detect(src, raw){
   const r = MP.det.detectForVideo(src, mpTs()), D = S.settings.det, W = src.videoWidth||src.naturalWidth||src.width, H = src.videoHeight||src.naturalHeight||src.height;
-  return (r.detections||[]).map(d => ({x:d.boundingBox.originX, y:d.boundingBox.originY, w:d.boundingBox.width, h:d.boundingBox.height, cat:d.categories[0]?.categoryName||'object', score:d.categories[0]?.score||0}))
-    .filter(d => d.score >= D.minScore/100 && d.cat!=='person' && (D.anyObject || VEHICLE_CATS.has(d.cat)) && !(d.w>W*.97 && d.h>H*.97))
-    .sort((a,b)=>b.score-a.score);
+  const minS = D.minScore/100 * (raw ? .6 : 1);
+  let out = (r.detections||[]).map(d => ({x:d.boundingBox.originX, y:d.boundingBox.originY, w:d.boundingBox.width, h:d.boundingBox.height, cat:d.categories[0]?.categoryName||'object', score:d.categories[0]?.score||0}))
+    .filter(d => d.score >= minS && d.cat!=='person' && (D.anyObject || VEHICLE_CATS.has(d.cat)) && shapeOk(d, W, H));
+  // remove duplicate boxes on the same object
+  out.sort((a,b)=>b.score-a.score); out = out.filter((d,i)=>out.slice(0,i).every(o=>iou(o,d)<.5));
+  // skip spots learned from the empty road (tape edges, shadows, marks …)
+  if (!raw && S.ignore.length) out = out.filter(d => S.ignore.every(z => iou(d, {x:z.x*W, y:z.y*H, w:z.w*W, h:z.h*H}) < .35));
+  return out;
 }
+/* "Learn empty road": watch the road with no vehicles for 3 s and remember every false box */
+const BgLearn = { until:0, seen:[] , frames:0 };
+function learnBackground(){
+  if (!Cam.on){ toast('Turn the camera on first 📷'); return; }
+  if (!MP.ready){ toast('AI vision is still loading – try again in a moment'); loadMP(); return; }
+  BgLearn.until = performance.now()+3000; BgLearn.seen=[]; BgLearn.frames=0; tracks=[];
+  toast('Learning the empty road… keep vehicles off the road for 3 seconds 🛣️');
+  const b=$('[data-act="learnBg"]'); b.disabled=true; b.innerHTML='<span class="recring" style="border-color:rgba(61,42,0,.3);border-top-color:#3D2A00"></span>Learning…';
+}
+function bgStep(t){
+  const W=VW(), H=VH(); BgLearn.frames++;
+  for (const d of detect(video, true)){ const z={x:d.x/W, y:d.y/H, w:d.w/W, h:d.h/H}; const m=BgLearn.seen.find(o=>iou(o,z)>.3); if (m){ m.n++; } else BgLearn.seen.push({...z, n:1}); }
+  if (t >= BgLearn.until){
+    BgLearn.until=0;
+    const add = BgLearn.seen.filter(z=>z.n >= Math.max(2, BgLearn.frames*.15)).map(({x,y,w,h})=>({x,y,w,h}));
+    S.ignore = [...S.ignore, ...add.filter(z=>S.ignore.every(o=>iou(o,z)<.5))]; DB.kv('ignore', S.ignore); renderIgnore();
+    const b=$('[data-act="learnBg"]'); b.disabled=false; b.innerHTML=icon('i-road')+'Learn empty road';
+    toast(add.length ? `Done! The AI will now ignore ${add.length} empty spot${add.length>1?'s':''} on the road ✔` : 'Road looks clean – nothing to ignore ✔', 'ok');
+    logEv(`🛣️ Learned the empty road (${S.ignore.length} spot${S.ignore.length===1?'':'s'} ignored)`, 'var(--sun)');
+  }
+}
+function renderIgnore(){ const b=$('#clearBgBtn'); if (b){ b.classList.toggle('hidden', !S.ignore.length); b.innerHTML = `${icon('i-x')}Forget ${S.ignore.length} ignored spot${S.ignore.length===1?'':'s'}`; } }
 function thumbOf(c){ const t = document.createElement('canvas'); t.width=t.height=96; t.getContext('2d').drawImage(c,0,0,96,96); return t.toDataURL('image/jpeg',.72); }
 
 /* =====================================================================
@@ -1391,7 +1437,8 @@ function renderTray(){
   const nSel = S.pending.filter(p=>p.sel).length;
   el.innerHTML = `<div class="tray-h"><b>New photos</b><span class="cnt">${S.pending.length}</span><span class="hint">not labelled yet – tap a photo to tick or untick it</span><span class="grow"></span>
       <button class="btn sm" data-act="trayAll">${nSel===S.pending.length?'Untick all':'Tick all'}</button><button class="btn sm danger" data-act="trayDel"${nSel?'':' disabled'}>${icon('i-trash')}Delete ticked</button></div>
-    <div class="tray-grid">${S.pending.map(p=>`<div class="tp${p.sel?' sel':''}" data-tp="${p.id}"><img src="${p.img}" alt=""><i>${p.sel?icon('i-check'):''}</i></div>`).join('')}</div>
+    <div class="note warn" style="margin-bottom:10px;padding:10px 12px;font-size:13.5px"><span class="ni">✂️</span><span><b>Recommended:</b> press ✂ on a photo and drag a box around the vehicle. Then the AI learns the vehicle, not the road. Tip: if the camera doesn't move, draw one box and tick “use this box for all ticked photos”.</span></div>
+    <div class="tray-grid">${S.pending.map(p=>`<div class="tp${p.sel?' sel':''}" data-tp="${p.id}"><img src="${p.img}" alt="">${p.box?`<span class="tbox" style="left:${p.box.x*100}%;top:${p.box.y*100}%;width:${p.box.w*100}%;height:${p.box.h*100}%"></span>`:''}<i>${p.sel?icon('i-check'):''}</i><button class="tcrop" data-crop="${p.id}" title="Draw a box around the vehicle">✂</button></div>`).join('')}</div>
     <div class="labelrow">${S.vClasses.length ? `<span class="hint" style="font-weight:700">Label ${nSel} ticked photo${nSel===1?'':'s'} as:</span>` + S.vClasses.map(c=>`<button class="lb" style="--c:${c.color}" data-label="${c.id}"${nSel?'':' disabled'}>${esc(c.name)}</button>`).join('') : `<span class="hint">👇 Add a vehicle group below first, then label these photos.</span>`}</div>`;
 }
 async function labelPending(clsId){
@@ -1400,7 +1447,8 @@ async function labelPending(clsId){
   if (!await loadMP()) return;
   for (const p of picks){
     const img = await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=p.img; });
-    const cv = cropTo(img, {x:0,y:0,w:img.naturalWidth,h:img.naturalHeight}, 0);
+    const W=img.naturalWidth, H=img.naturalHeight;
+    const cv = p.box ? cropTo(img, {x:p.box.x*W, y:p.box.y*H, w:p.box.w*W, h:p.box.h*H}, .1) : cropTo(img, {x:0,y:0,w:W,h:H}, 0);
     const s = {id:uid(), cls:clsId, vec:embedCanvas(cv), thumb:thumbOf(cv)};
     S.vSamples.push(s); DB.put('vehicles', s);
   }
@@ -1408,6 +1456,29 @@ async function labelPending(clsId){
   savePending(); renderTray(); renderV(); renderCounts();
   toast(`${picks.length} photo${picks.length>1?'s':''} labelled as “${esc(c.name)}” ✔`, 'ok');
 }
+
+const Crop = { p:null, img:null, box:null, start:null };
+async function openCrop(id){
+  const p = S.pending.find(x=>x.id===id); if (!p) return;
+  const img = await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=p.img; });
+  Object.assign(Crop, {p, img, box:p.box?{...p.box}:null, start:null});
+  const c=$('#cropC'); c.width=img.naturalWidth; c.height=img.naturalHeight;
+  c.style.width = `min(100%, calc(60vh * ${img.naturalWidth/img.naturalHeight}))`;
+  $('#cropAll').checked=false; drawCrop(); $('#cropScrim').classList.add('on');
+}
+function drawCrop(){
+  const c=$('#cropC'), x=c.getContext('2d'), W=c.width, H=c.height; x.drawImage(Crop.img,0,0);
+  if (Crop.box){ const b=Crop.box;
+    x.fillStyle='rgba(27,33,64,.5)'; x.beginPath(); x.rect(0,0,W,H); x.rect(b.x*W,b.y*H,b.w*W,b.h*H); x.fill('evenodd');
+    x.strokeStyle='#FF7A59'; x.lineWidth=Math.max(3,W/160); x.strokeRect(b.x*W,b.y*H,b.w*W,b.h*H); }
+  $('#cropHint').textContent = Crop.box ? 'Looks good? Press “Use this box”. Drag again to redraw.' : 'Drag on the photo to draw a box around the vehicle.';
+}
+(function(){
+  const c=$('#cropC'), pt=e=>{ const r=c.getBoundingClientRect(); return {x:clamp((e.clientX-r.left)/r.width,0,1), y:clamp((e.clientY-r.top)/r.height,0,1)}; };
+  c.addEventListener('pointerdown', e=>{ c.setPointerCapture(e.pointerId); Crop.start=pt(e); });
+  c.addEventListener('pointermove', e=>{ if (!Crop.start) return; const q=pt(e), a=Crop.start; Crop.box={x:Math.min(a.x,q.x), y:Math.min(a.y,q.y), w:Math.abs(q.x-a.x), h:Math.abs(q.y-a.y)}; drawCrop(); });
+  c.addEventListener('pointerup', ()=>{ Crop.start=null; if (Crop.box && (Crop.box.w<.03 || Crop.box.h<.03)) Crop.box=null; drawCrop(); });
+})();
 
 function renderV(){
   const el = $('#vList');
@@ -1676,7 +1747,8 @@ function updateTracks(dets, t){
   for (const d of dets.slice(0, D.maxBoxes)){
     const cx=d.x+d.w/2, cy=d.y+d.h/2; let best=null, bd=maxD;
     for (const tr of tracks){ if (tr.matched) continue; const dd=Math.hypot(tr.cx-cx, tr.cy-cy); if (dd<bd){ bd=dd; best=tr; } }
-    if (!best){ best={id:++trackSeq, side:{}, label:null, conf:0, lastCls:-1e9, seen:0, flash:0}; tracks.push(best); }
+    if (!best){ best={id:++trackSeq, side:{}, crossT:{}, label:null, conf:0, lastCls:-1e9, seen:0, flash:0}; tracks.push(best); }
+    else if (bd > Math.max(W,H)*.09) best.side={};   // jumped too far: probably a different object, start fresh
     Object.assign(best, {x:d.x, y:d.y, w:d.w, h:d.h, cx, cy, cat:d.cat, score:d.score, matched:true, missed:0}); best.seen++;
     // ask the vehicle brain what this box is (twice a second per vehicle)
     if (S.vSamples.length && t-best.lastCls>500){
@@ -1688,11 +1760,16 @@ function updateTracks(dets, t){
       else { best.label=null; best.conf=0; }
     }
     // line crossing test using the bottom-centre of the box (where wheels touch the road)
-    const px=cx, py=d.y+d.h;
+    // a small "dead zone" around the line stops wobbling boxes from counting as crossings
+    const px=cx, py=d.y+d.h, margin=H*.03;
     for (const ln of S.lines){
-      const ax=ln.a.x*W, ay=ln.a.y*H, bx=ln.b.x*W, by=ln.b.y*H, L2=(bx-ax)**2+(by-ay)**2 || 1;
-      const side = Math.sign((bx-ax)*(py-ay)-(by-ay)*(px-ax)), tp=((px-ax)*(bx-ax)+(py-ay)*(by-ay))/L2, prev=best.side[ln.id];
-      if (side!==0){ if (prev && prev!==side && tp>-.1 && tp<1.1 && best.seen>2) onCross(best, ln, t); best.side[ln.id]=side; }
+      const ax=ln.a.x*W, ay=ln.a.y*H, bx=ln.b.x*W, by=ln.b.y*H, L2=(bx-ax)**2+(by-ay)**2 || 1, len=Math.sqrt(L2);
+      const dist=((bx-ax)*(py-ay)-(by-ay)*(px-ax))/len, tp=((px-ax)*(bx-ax)+(py-ay)*(by-ay))/L2, prev=best.side[ln.id];
+      const side = dist>margin ? 1 : dist<-margin ? -1 : 0;
+      if (side!==0 && tp>-.05 && tp<1.05){
+        if (prev && prev!==side && best.seen>3 && t-(best.crossT[ln.id]||-1e9)>2500){ best.crossT[ln.id]=t; onCross(best, ln, t); }
+        best.side[ln.id]=side;
+      }
     }
   }
   tracks = tracks.filter(tr=>{ if (!tr.matched) tr.missed=(tr.missed||0)+1; return tr.missed<10; });
@@ -1779,6 +1856,9 @@ function drawOverlay(t){
   const showLines = S.mode==='live' || S.step==='line';
   if (showLines) S.lines.forEach(l => drawLine(octx, {x:l.a.x*W, y:l.a.y*H}, {x:l.b.x*W, y:l.b.y*H}, S.mode==='live' ? (Sig.state==='R'?'#F04A5A':Sig.state==='Y'?'#E0A800':'#22B573') : '#3D6BFF', l.name, sc, S.mode==='live'));
   if (S.mode==='live'){
+    octx.save(); octx.setLineDash([5*sc,5*sc]); octx.lineWidth=1.5*sc; octx.strokeStyle='rgba(98,107,137,.55)'; octx.fillStyle='rgba(98,107,137,.10)';
+    S.ignore.forEach(z=>{ octx.fillRect(z.x*W,z.y*H,z.w*W,z.h*H); octx.strokeRect(z.x*W,z.y*H,z.w*W,z.h*H); }); octx.restore();
+    if (BgLearn.until){ octx.fillStyle='rgba(255,176,32,.18)'; octx.fillRect(0,0,W,H); }
     for (const tr of tracks){ if (tr.missed>2) continue;
       const c = tr.label && clsById('v', tr.label), alert = t - tr.flash < 1500 && Sig.state==='R';
       const base = VEHICLE_CATS.has(tr.cat) ? tr.cat[0].toUpperCase()+tr.cat.slice(1) : 'Vehicle';
@@ -1792,8 +1872,7 @@ function loop(t){
   if (S.mode==='live' && Cam.on && MP.ready && video.readyState>=2 && t-lastDetT>70){   // detection runs only in Live mode
     lastDetT=t;
     try{
-      const dets = detect(video);
-      updateTracks(dets, t);
+      if (BgLearn.until) bgStep(t); else updateTracks(detect(video), t);
     } catch(e){ console.warn(e); }
   }
   drawOverlay(t);
@@ -2005,6 +2084,7 @@ document.addEventListener('click', async e => {
   const mb = e.target.closest('#modes button'); if (mb) return setMode(mb.dataset.mode);
   const sb = e.target.closest('.steps button'); if (sb) return setStep(sb.dataset.step);
   const tb = e.target.closest('.stabs button'); if (tb){ $$('.stabs button').forEach(b=>b.setAttribute('aria-selected', b===tb)); $$('.spane').forEach(p=>p.classList.toggle('on', p.id==='sp-'+tb.dataset.st)); return; }
+  const cb = e.target.closest('[data-crop]'); if (cb) return openCrop(cb.dataset.crop);
   const tp = e.target.closest('[data-tp]'); if (tp){ const p=S.pending.find(x=>x.id===tp.dataset.tp); if (p){ p.sel=!p.sel; savePending(); renderTray(); } return; }
   const lb = e.target.closest('[data-label]'); if (lb) return labelPending(lb.dataset.label);
   const rb = e.target.closest('[data-rec]'); if (rb) return recordSound(rb.dataset.rec, +rb.dataset.n);
@@ -2021,6 +2101,10 @@ document.addEventListener('click', async e => {
     case 'addS': addClass('s'); break;
     case 'delV': { const c=clsById('v',id); if (!confirm(`Delete “${c.name}” and all its photos?`)) return; S.vClasses=S.vClasses.filter(x=>x.id!==id); S.vSamples.filter(s=>s.cls===id).forEach(s=>DB.del('vehicles',s.id)); S.vSamples=S.vSamples.filter(s=>s.cls!==id); Brain.v.stale=true; saveMeta(); renderV(); renderCounts(); break; }
     case 'capture': capturePhoto(); break;
+    case 'learnBg': learnBackground(); break;
+    case 'clearBg': S.ignore=[]; DB.kv('ignore', S.ignore); renderIgnore(); toast('Ignored spots forgotten'); break;
+    case 'cropUse': { if (Crop.box){ const targets = $('#cropAll').checked ? S.pending.filter(p=>p.sel||p===Crop.p) : [Crop.p]; targets.forEach(p=>p.box={...Crop.box}); } else Crop.p.box=null; savePending(); renderTray(); $('#cropScrim').classList.remove('on'); break; }
+    case 'cropClear': Crop.box=null; drawCrop(); break;
     case 'trayAll': { const all = S.pending.every(p=>p.sel); S.pending.forEach(p=>p.sel=!all); savePending(); renderTray(); break; }
     case 'trayDel': S.pending = S.pending.filter(p=>!p.sel); savePending(); renderTray(); break;
     case 'delVS': S.vSamples=S.vSamples.filter(s=>s.id!==id); DB.del('vehicles', id); Brain.v.stale=true; renderV(); renderCounts(); break;
@@ -2054,7 +2138,7 @@ $('#forgetBtn2').addEventListener('click', ()=>$('#cfScrim').classList.add('on')
 $('#footSet').addEventListener('click', ()=>openSettings());
 $('#cfYes').addEventListener('click', async ()=>{
   await DB.clearAll(); try{ localStorage.removeItem('signalsense'); }catch(e){}
-  Object.assign(S, {pending:[], vClasses:[], vSamples:[], sClasses:[], sSamples:[], lines:[], settings:defaultSettings(), rules:defaultRules(), algo:{v:'nn',s:'nn',kv:3,ks:3}});
+  Object.assign(S, {ignore:[], pending:[], vClasses:[], vSamples:[], sClasses:[], sSamples:[], lines:[], settings:defaultSettings(), rules:defaultRules(), algo:{v:'nn',s:'nn',kv:3,ks:3}});
   Object.values(Brain).forEach(B=>Object.assign(B,{mlp:null,classes:[],acc:null,trained:false,stale:true}));
   $$('.scrim').forEach(s=>s.classList.remove('on')); syncAlgoInputs(); renderAll(); renderResume(); pushConfig(false);
   toast('All data forgotten. Fresh start! ✨', 'ok');
@@ -2084,7 +2168,7 @@ $('#importFile').addEventListener('change', async e => {
 });
 
 function syncAlgoInputs(){ $('#algoV').value=S.algo.v; $('#algoS').value=S.algo.s; $('#kV').value=S.algo.kv; $('#kS').value=S.algo.ks; $('#kVv').textContent=S.algo.kv; $('#kSv').textContent=S.algo.ks; paintRange($('#kV')); paintRange($('#kS')); }
-function renderAll(){ renderTray(); renderV(); renderS(); renderLines(); renderCounts(); renderGates(); renderSignal(false); }
+function renderAll(){ renderIgnore(); renderTray(); renderV(); renderS(); renderLines(); renderCounts(); renderGates(); renderSignal(false); }
 
 /* =====================================================================
    START
