@@ -1,6 +1,7 @@
 /*
   ===================================================================
    SignalSense – AI Smart Traffic Lab  ·  Arduino UNO R4 WiFi sketch
+   Designed & developed by CognoSpace
   ===================================================================
    Works with index.html (Web Bluetooth, Chrome / Edge).
 
@@ -12,10 +13,9 @@
      GREEN  -> D4
    TM1637 4-digit display
      CLK -> D6     DIO -> D7     VCC -> 5V     GND -> GND
-   Servos (signal wire)
+   Servos (signal wire)  – 2 servos
      Servo 1 "Main gate"  -> D9   (open on GREEN/YELLOW, closed on RED)
-     Servo 2 "Cross gate" -> D10  (opposite of servo 1 by default)
-     Servo 3 "Side gate"  -> D11  (opposite or same, set in the app)
+     Servo 2 "Cross gate" -> D10  (opposite of servo 1 by default, or same – set in the app)
    Power the servos from an external 5 V supply (or a good USB supply).
    Connect the supply GND to Arduino GND.
 
@@ -28,7 +28,7 @@
 
    COMMANDS FROM THE APP (text, one per write)
      CFG,green,yellow,red,max      light times in seconds, max = cap
-     SRV,i,open,close,mode         i = 0..2, angles 0..180, mode 0 = same as main, 1 = opposite
+     SRV,i,open,close,mode         i = 0..1, angles 0..180, mode 0 = same as main, 1 = opposite
      ADD,R,sec  / ADD,G,sec        add seconds to the current red / green
      GO,R / GO,Y / GO,G            jump to a colour now
      RUN,0 / RUN,1                 pause / resume
@@ -46,7 +46,8 @@
 /* ---------- pins ---------- */
 const uint8_t PIN_RED = 2, PIN_YEL = 3, PIN_GRN = 4;
 const uint8_t PIN_CLK = 6, PIN_DIO = 7;
-const uint8_t SERVO_PINS[3] = {9, 10, 11};
+const uint8_t NUM_SERVOS = 2;
+const uint8_t SERVO_PINS[NUM_SERVOS] = {9, 10};
 
 /* ---------- Bluetooth (must match index.html) ---------- */
 #define SVC_UUID  "19b10000-e8f2-537e-4f6c-d104768a1214"
@@ -58,7 +59,7 @@ BLEStringCharacteristic cmdChar(CMD_UUID, BLEWrite | BLEWriteWithoutResponse, 64
 BLEStringCharacteristic statChar(STAT_UUID, BLERead | BLENotify, 32);
 
 TM1637Display display(PIN_CLK, PIN_DIO);
-Servo servos[3];
+Servo servos[NUM_SERVOS];
 
 /* ---------- types (kept at the top so the Arduino IDE prototypes compile) ---------- */
 enum Phase : uint8_t { GREEN, YELLOW, RED };
@@ -67,14 +68,14 @@ enum Phase : uint8_t { GREEN, YELLOW, RED };
 struct Config {
   uint16_t magic;
   uint8_t green, yellow, red, maxPhase;
-  uint8_t sOpen[3], sClose[3], sMode[3];   // sMode: 0 = same as main, 1 = opposite
+  uint8_t sOpen[NUM_SERVOS], sClose[NUM_SERVOS], sMode[NUM_SERVOS];   // sMode: 0 = same as main, 1 = opposite
 };
-const uint16_t MAGIC = 0x5A17;
+const uint16_t MAGIC = 0x5A22;   // changed when the settings layout changes
 Config cfg;
 
 void defaultConfig() {
   cfg.magic = MAGIC; cfg.green = 15; cfg.yellow = 3; cfg.red = 15; cfg.maxPhase = 60;
-  for (int i = 0; i < 3; i++) { cfg.sOpen[i] = 90; cfg.sClose[i] = 0; cfg.sMode[i] = (i == 0) ? 0 : 1; }
+  for (int i = 0; i < NUM_SERVOS; i++) { cfg.sOpen[i] = 90; cfg.sClose[i] = 0; cfg.sMode[i] = (i == 0) ? 0 : 1; }
 }
 
 /* ---------- traffic state ---------- */
@@ -99,7 +100,7 @@ void applyOutputs() {
   digitalWrite(PIN_YEL, phase == YELLOW);
   digitalWrite(PIN_GRN, phase == GREEN);
   bool mainOpen = (phase != RED);              // main gate: open on green & yellow
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < NUM_SERVOS; i++) {
     bool open = (i == 0 || cfg.sMode[i] == 0) ? mainOpen : !mainOpen;
     servos[i].write(open ? cfg.sOpen[i] : cfg.sClose[i]);
   }
@@ -177,7 +178,7 @@ void handleCommand(String s) {
       cfg.red = constrain(v[2], 1, 250);   cfg.maxPhase = constrain(v[3], 5, 250);
     }
   } else if (s.startsWith("SRV")) {
-    if (splitInts(s, v, 4) == 4 && v[0] >= 0 && v[0] < 3) {
+    if (splitInts(s, v, 4) == 4 && v[0] >= 0 && v[0] < NUM_SERVOS) {
       cfg.sOpen[v[0]] = constrain(v[1], 0, 180);
       cfg.sClose[v[0]] = constrain(v[2], 0, 180);
       cfg.sMode[v[0]] = (v[0] == 0) ? 0 : (v[3] ? 1 : 0);
@@ -195,7 +196,7 @@ void handleCommand(String s) {
     if (!run && !paused) { paused = true; pausedLeft = (long)(phaseEnd - millis()) > 0 ? phaseEnd - millis() : 0; }
     else if (run && paused) { paused = false; phaseEnd = millis() + pausedLeft; }
   } else if (s.startsWith("TST")) {
-    if (splitInts(s, v, 2) == 2 && v[0] >= 0 && v[0] < 3) {
+    if (splitInts(s, v, 2) == 2 && v[0] >= 0 && v[0] < NUM_SERVOS) {
       servos[v[0]].write(constrain(v[1], 0, 180));
       testUntil = millis() + 1500;
     }
@@ -235,7 +236,7 @@ void setup() {
   display.setSegments(SEG_SS);
 
   loadConfig();
-  for (int i = 0; i < 3; i++) servos[i].attach(SERVO_PINS[i]);
+  for (int i = 0; i < NUM_SERVOS; i++) servos[i].attach(SERVO_PINS[i]);
 
   // LED self-test
   digitalWrite(PIN_RED, HIGH); delay(200); digitalWrite(PIN_YEL, HIGH); delay(200); digitalWrite(PIN_GRN, HIGH); delay(300);
