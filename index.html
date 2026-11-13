@@ -1024,6 +1024,7 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
               <div class="seg" id="seg"><span></span><span></span><span></span><span></span></div>
               <div class="phase" id="phase">GO</div>
               <div class="phasebar"><i id="phasebar"></i></div>
+              <p class="hint hidden" id="sigOffNote" style="margin-top:6px;font-weight:600">Camera is off – the signal is switched off and paused. Turn the camera on to start it.</p>
             </div>
           </div>
           <div class="manual">
@@ -1113,7 +1114,7 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
           <div class="field" style="--c:var(--blue)"><label><i></i>Match strictness</label><input type="range" min="20" max="95" data-set="det.simThresh" style="--c:var(--blue)"><span class="val"></span></div>
           <p class="hint">Higher = the AI only names a vehicle when it is very sure; otherwise it shows “not trained”. Lower it if your new toys are not being named.</p>
           <div class="field" style="--c:var(--blue)"><label><i></i>Max vehicles tracked</label><input type="range" min="1" max="10" data-set="det.maxBoxes" style="--c:var(--blue)"><span class="val"></span></div>
-          <div class="field" style="grid-template-columns:1fr auto"><label style="font-size:15px">Spot red-light jumps with</label><select data-set="det.jumpMode" style="width:auto"><option value="both">Trained Line-jump AI + tracking</option><option value="judge">Trained Line-jump AI only</option><option value="track">Tracking only</option></select></div>
+          <div class="field" style="grid-template-columns:1fr auto"><label style="font-size:15px">Spot red-light jumps with</label><select data-set="det.jumpMode" style="width:auto"><option value="both">Line-jump AI if trained, otherwise tracking (recommended)</option><option value="track">Tracking only</option></select></div>
           <div class="field" style="grid-template-columns:1fr auto"><label style="font-size:15px">Also find vehicles by comparing with the empty road (finds toys on the tape)</label><span class="switch"><input type="checkbox" data-set="det.motion"><span></span></span></div>
           <div class="field" style="grid-template-columns:1fr auto"><label style="font-size:15px">Stop line follows the black tape automatically (if the camera moves a little)</label><span class="switch"><input type="checkbox" data-set="det.autoAlign"><span></span></span></div>
           <div class="field" style="grid-template-columns:1fr auto"><label style="font-size:15px">Box any object (good for toys), not only real-vehicle shapes</label><span class="switch"><input type="checkbox" data-set="det.anyObject"><span></span></span></div>
@@ -1402,11 +1403,11 @@ async function camStart(){
     const v = Cam.devId ? {deviceId:{exact:Cam.devId}} : {facingMode:{ideal:Cam.facing}};
     Cam.stream = await navigator.mediaDevices.getUserMedia({video:{...v, width:{ideal:1280}, height:{ideal:720}}, audio:false});
     video.srcObject = Cam.stream; await video.play().catch(()=>{});
-    Cam.on = true; camUI(); loadMP();
+    Cam.on = true; camUI(); loadMP(); send('SLEEP,0'); logEv('📷 Camera on – traffic signal running', 'var(--green)');
     if (S.mode==='live'){ if (video.readyState>=2) startCalibration(); else video.addEventListener('loadeddata', startCalibration, {once:true}); }
   } catch(e){ console.error(e); toast('Camera blocked or not found. Allow camera access in the browser.', 'bad'); Cam.on=false; camUI(); }
 }
-function camStop(){ Cam.stream?.getTracks().forEach(t=>t.stop()); Cam.stream=null; Cam.on=false; video.srcObject=null; tracks=[]; Cal.state='idle'; renderCal(); camUI(); }
+function camStop(){ Cam.stream?.getTracks().forEach(t=>t.stop()); Cam.stream=null; Cam.on=false; video.srcObject=null; tracks=[]; Hold.on=false; Judge.viol=false; send('SLEEP,1'); logEv('📷 Camera off – traffic signal switched off', 'var(--muted)'); Cal.state='idle'; renderCal(); camUI(); }
 async function camFlip(){
   const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput');
   if (devs.length > 1){
@@ -1896,22 +1897,28 @@ function renderS(){
      ADD,R|G,sec   GO,R|Y|G   RUN,0|1   TST,i,angle   SAVE   HELLO
    Status back:  S,<R|Y|G>,<seconds left>,<paused 0|1>
    ===================================================================== */
-const Sig = { state:'G', remain:0, paused:false, total:1, prevState:null };
+const Sig = { state:'G', remain:0, paused:false, total:1, prevState:null, sleep:false };
 const Sim = {
-  phase:'G', start:0, end:0, paused:false, left:0, iv:null,
+  phase:'G', start:0, end:0, paused:false, left:0, iv:null, sleep:false, sleepLeft:0,
   dur(p){ const T=S.settings.timing; return 1000*(p==='G'?T.green:p==='Y'?T.yellow:T.red); },
   holdUntil:0,
   enter(p){ this.holdUntil=0; this.phase=p; this.start=Date.now(); this.end=this.start+this.dur(p); if (this.paused) this.left=this.dur(p); },
   begin(){ if(!this.start) this.enter('G'); clearInterval(this.iv); this.iv=setInterval(()=>this.tick(), 200); this.tick(); },
   stop(){ clearInterval(this.iv); this.iv=null; },
-  tick(){ const now=Date.now(), holding = this.phase==='R' && now<this.holdUntil;
+  tick(){ const now=Date.now();
+    if (this.sleep){ onStatus(`S,${this.phase},${Math.ceil(this.sleepLeft/1000)},${this.paused?1:0},1`); return; }
+    const holding = this.phase==='R' && now<this.holdUntil;
     if (holding && !this.paused && this.end-now<1000) this.end=now+1000;   // red never ends while a jumper is past the line
     if (!this.paused && now>=this.end) this.enter(this.phase==='G'?'Y':this.phase==='Y'?'R':'G');
-    const rem = Math.ceil((this.paused?this.left:this.end-now)/1000); onStatus(`S,${this.phase},${Math.max(0,rem)},${this.paused?1:0}`); },
+    const rem = Math.ceil((this.paused?this.left:this.end-now)/1000); onStatus(`S,${this.phase},${Math.max(0,rem)},${this.paused?1:0},0`); },
   handle(cmd){ const p=cmd.split(','), now=Date.now();
     if (p[0]==='ADD' && p[1]===this.phase){ const ms=(+p[2])*1000, cap=this.start+S.settings.timing.maxPhase*1000;
       if (this.paused) this.left+=ms; else this.end=Math.max(this.end, Math.min(this.end+ms, cap)); }
     else if (p[0]==='GO') this.enter(p[1]);
+    else if (p[0]==='SLEEP'){ if (p[1]==='1' && !this.sleep){ this.sleep=true; this.sleepLeft=this.paused?this.left:Math.max(0,this.end-now); this.holdUntil=0; }
+      else if (p[1]==='0' && this.sleep){ this.sleep=false; if (this.paused) this.left=this.sleepLeft; else this.end=now+this.sleepLeft; } }
+    else if (this.sleep) { /* switched off: ignore everything else */ }
+    else if (p[0]==='REL' && this.phase==='R'){ this.holdUntil=0; const cap=S.settings.timing.maxPhase*1000; if (this.paused) this.left=Math.min(this.left,cap); else if (this.end-now>cap) this.end=now+cap; }
     else if (p[0]==='HOLD' && this.phase==='R'){ this.holdUntil=now+2500; const ms=(+p[1]||0)*1000; if (this.paused) this.left+=ms; else this.end+=ms; }
     else if (p[0]==='RUN'){ if (p[1]==='0' && !this.paused){ this.paused=true; this.left=this.end-now; } else if (p[1]==='1' && this.paused){ this.paused=false; this.end=now+this.left; } }
     if (this.iv) this.tick(); }
@@ -1923,25 +1930,26 @@ function onStatus(str){
   const st=p[1], rem=+p[2]||0;
   if (st!==Sig.state || rem>Sig.total){ Sig.total=Math.max(rem,1); }
   if (st!==Sig.state){ if (st!=='R'){ tracks.forEach(tr=>tr.viol=null); Hold.on=false; Judge.viol=false; } Sig.prevState=Sig.state; Sig.state=st; logEv(st==='R'?'🔴 Light turned RED – gate 1 closes':st==='G'?'🟢 Light turned GREEN – gate 1 opens':'🟡 Light turned YELLOW', st==='R'?'var(--red)':st==='G'?'var(--green)':'var(--sun)', true); }
-  const changed = rem!==Sig.remain; Sig.remain=rem; Sig.paused=p[3]==='1';
+  const changed = rem!==Sig.remain; Sig.remain=rem; Sig.paused=p[3]==='1'; Sig.sleep=p[4]==='1';
   renderSignal(changed);
 }
 function renderSignal(bump){
-  const st=Sig.state;
-  $('#lampR').classList.toggle('on', st==='R'); $('#lampY').classList.toggle('on', st==='Y'); $('#lampG').classList.toggle('on', st==='G');
+  const st=Sig.state, off=Sig.sleep;
+  $('#lampR').classList.toggle('on', !off && st==='R'); $('#lampY').classList.toggle('on', !off && st==='Y'); $('#lampG').classList.toggle('on', !off && st==='G');
   const col = st==='R'?'#FF4D55':st==='Y'?'#FFC53A':'#2DE08A', pc = st==='R'?'var(--red)':st==='Y'?'var(--sun-d)':'var(--green)';
-  const txt = String(Sig.remain).padStart(4,' ').slice(-4);
+  const txt = off ? '    ' : String(Sig.remain).padStart(4,' ').slice(-4);
   $$('#seg span').forEach((s,i)=>{ const ch = txt[i]===' ' ? '' : txt[i]; if (s.textContent!==ch){ s.textContent=ch; if (bump){ s.classList.remove('bump'); void s.offsetWidth; s.classList.add('bump'); } } });
   $('#seg').style.setProperty('--segc', col);
-  const ph=$('#phase'); ph.textContent = Sig.paused ? 'PAUSED' : st==='R'?'STOP':st==='Y'?'GET READY':'GO'; ph.style.setProperty('--pc', pc);
-  const bar=$('#phasebar'); bar.style.width = (Sig.remain/Sig.total*100)+'%'; bar.style.setProperty('--pc', pc); bar.parentElement.style.setProperty('--pc', pc);
+  const ph=$('#phase'); ph.textContent = off ? 'SIGNAL OFF' : Sig.paused ? 'PAUSED' : st==='R'?'STOP':st==='Y'?'GET READY':'GO'; ph.style.setProperty('--pc', off?'var(--muted)':pc);
+  $('#sigOffNote').classList.toggle('hidden', !off);
+  const bar=$('#phasebar'); bar.style.width = off ? '0' : (Sig.remain/Sig.total*100)+'%'; bar.style.setProperty('--pc', pc); bar.parentElement.style.setProperty('--pc', pc);
   const pb=$('#pauseBtn'); pb.querySelector('span').textContent = Sig.paused?'Resume signal':'Pause signal'; pb.querySelector('use').setAttribute('href', Sig.paused?'#i-play':'#i-pause');
   renderGates(); renderHud(); updateRuleHits();
 }
-function gateOpen(i){ const mainOpen = Sig.state!=='R'; const m = i===0 ? 'main' : S.settings.servos[i].mode; return m==='main' ? mainOpen : !mainOpen; }
+function gateOpen(i){ if (Sig.sleep) return false; const mainOpen = Sig.state!=='R'; const m = i===0 ? 'main' : S.settings.servos[i].mode; return m==='main' ? mainOpen : !mainOpen; }
 let gateKey='';
 function renderGates(force){
-  const key = Sig.state + JSON.stringify(S.settings.servos); if (!force && key===gateKey) return; gateKey=key;
+  const key = Sig.state + Sig.sleep + JSON.stringify(S.settings.servos); if (!force && key===gateKey) return; gateKey=key;
   $('#gates').innerHTML = S.settings.servos.map((s,i)=>{ const o=gateOpen(i); return `<div class="gate ${o?'open':'closed'}"><div class="gatepic"><div class="base"></div><div class="post"></div><div class="arm"></div></div><b>${esc(s.name)}</b><span>${o?'OPEN':'CLOSED'} · ${o?s.open:s.close}°</span></div>`; }).join('');
 }
 function renderHud(){
@@ -1984,6 +1992,7 @@ function pushConfig(save){
   const T=S.settings.timing; send(`CFG,${T.green},${T.yellow},${T.red},${T.maxPhase}`);
   S.settings.servos.forEach((s,i)=>send(`SRV,${i},${s.open},${s.close},${i===0||s.mode==='main'?0:1}`));
   if (save) send('SAVE');
+  send(Cam.on ? 'SLEEP,0' : 'SLEEP,1');
 }
 
 /* =====================================================================
@@ -2042,6 +2051,7 @@ function sideOf(tr, ln, raw){
 const Hold = { on:false, rule:null, last:0 };
 function holdStep(t){
   let active=null;
+  if (judgeActive()) tracks.forEach(tr=>{ tr.viol=null; });   // the trained Line-jump AI decides – tracking can't keep the light held
   for (const tr of tracks){
     if (!tr.viol) continue; const ln=S.lines.find(l=>l.id===tr.viol.line); if (!ln){ tr.viol=null; continue; }
     const sd = sideOf(tr, ln);
@@ -2050,14 +2060,18 @@ function holdStep(t){
   }
   let r = active && S.rules.find(x=>x.id===active.viol.rule && x.on);
   if (!r && Judge.viol) r = S.rules.find(x=>x.id===Judge.rule && x.on);
-  if (r && Sig.state==='R'){
+  if (r && Sig.state==='R' && !Sig.sleep){
     if (!Hold.on){ Hold.on=true; Hold.last=0; logEv(active ? `⛔ RED stays on and the gate stays closed until ${esc(vehName(active))} #${active.id} goes back` : '⛔ RED stays on and the gate stays closed until the vehicle goes back', 'var(--red)'); }
     Hold.rule=r.id;
     if (t-Hold.last>=1000){ Hold.last=t; send(`HOLD,${+r.sec||0}`); if (+r.sec) setStat('add', Stats.add+(+r.sec)); }
-  } else if (Hold.on){ Hold.on=false; Hold.rule=null; if (!active && !Judge.viol) logEv('✅ Road is clear behind the line – normal timing again', 'var(--green)'); }
+  } else if (Hold.on){
+    Hold.on=false; Hold.rule=null;
+    if (Sig.state==='R') send('REL');   // release: the red finishes, never longer than "Longest allowed"
+    if (!active && !Judge.viol) logEv('✅ Road is clear behind the line – normal timing again', 'var(--green)');
+  }
 }
 function onCross(tr, ln, t, origin){
-  if (S.settings.det.jumpMode==='judge' && judgeActive()) return;   // the trained Line-jump AI decides instead
+  if (judgeActive()) return;   // the trained Line-jump AI counts and decides instead (no double counting)
   tr.flash=t; setStat('cross', Stats.cross+1);
   if (Sig.state==='R'){ setStat('viol', Stats.viol+1); const st=$('#stage'); st.classList.remove('viol'); void st.offsetWidth; st.classList.add('viol'); logEv(`🚨 ${esc(vehName(tr))} #${tr.id} crossed “${esc(ln.name)}” on RED!`, 'var(--red)'); }
   else logEv(`🚗 ${esc(vehName(tr))} #${tr.id} crossed “${esc(ln.name)}”`, 'var(--teal)');
@@ -2613,7 +2627,7 @@ function renderAll(){ renderJ(); renderRuleMini(); renderIgnore(); renderTray();
   syncAlgoInputs(); renderAll(); renderResume();
   let view='home'; try{ view=localStorage.getItem('ss-view')||'home'; }catch(e){}
   if (view==='lab' || location.hash==='#lab') showApp();
-  Sim.begin();
+  Sim.begin(); Sim.handle('SLEEP,1');   // camera starts off → signal off
   if (S.vSamples.length || S.sSamples.length || S.jSamples.length) trainAll(true);
   logEv('👋 SignalSense started. Signal runs in the simulator until you connect the Arduino.', 'var(--teal)');
   requestAnimationFrame(loop);
