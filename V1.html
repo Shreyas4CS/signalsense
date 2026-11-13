@@ -1,0 +1,2046 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>SignalSense · AI Smart Traffic Lab | CognoSpace</title>
+<meta name="theme-color" content="#3D6BFF">
+<meta name="description" content="SignalSense: teach an AI to see toy vehicles, hear horns and run a smart traffic signal on Arduino UNO R4 over Bluetooth. Designed and developed by CognoSpace.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@700;800&display=swap" rel="stylesheet">
+<style>
+/* SignalSense – bright "city road" palette: signal blue for actions, amber road paint,
+   go-green, stop-red and lilac on a soft sky page. Type: Baloo 2 + Plus Jakarta Sans. */
+:root{
+  color-scheme:light;
+  --bg:#F6F8FF;--bg2:#EDF1FC;--paper:#FFFFFF;--ink:#1B2140;--muted:#626B89;--line:#E3E8F5;--line2:#EEF2FB;--dark:#18203D;
+  --blue:#3D6BFF;--blue-d:#2449CC;--blue-s:#E5ECFF;
+  --sun:#FFB020;--sun-d:#A86A00;--sun-s:#FFF1D2;
+  --green:#22B573;--green-d:#168552;--green-s:#DCF5E8;
+  --red:#F04A5A;--red-d:#C42F3E;--red-s:#FFE4E7;
+  --lilac:#8B6CFF;--lilac-d:#6447E0;--lilac-s:#EEE9FF;
+  --peach:#FF7A59;--peach-d:#D4532F;--peach-s:#FFE8E0;
+  --teal:#12B5B0;--teal-d:#0A8985;--teal-s:#DAF6F4;
+  --r-xl:28px;--r-lg:22px;--r-md:16px;--r-sm:11px;
+  --shadow:0 1px 0 rgba(27,33,64,.04),0 14px 34px -20px rgba(27,33,64,.32);
+  --shadow-lg:0 30px 60px -30px rgba(27,33,64,.45);
+  --navH:72px;
+  --fd:'Baloo 2','Fredoka',system-ui,sans-serif;
+  --fb:'Plus Jakarta Sans','Segoe UI',system-ui,-apple-system,sans-serif;
+  --fm:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
+  --ease:cubic-bezier(.2,.8,.2,1);--spring:cubic-bezier(.3,1.5,.5,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{font-family:var(--fb);background:var(--bg);color:var(--ink);font-size:15.5px;line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden;min-height:100vh}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+a{color:inherit;text-decoration:none}
+svg{display:block}
+h1,h2,h3,h4{font-family:var(--fd);font-weight:800;line-height:1.15;color:var(--ink)}
+::selection{background:var(--sun-s)}
+:focus-visible{outline:3px solid rgba(61,107,255,.45);outline-offset:2px;border-radius:8px}
+.hide,.hidden{display:none!important}
+.num{font-variant-numeric:tabular-nums}
+.wrap{width:100%;max-width:1240px;margin:0 auto;padding:0 24px}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.grow{flex:1;min-width:0}
+.hint{color:var(--muted);font-size:14px}
+
+/* ---------- logos (any size fits) ---------- */
+.brand{display:flex;align-items:center;gap:14px;background:#fff;border:2px solid var(--line);border-radius:16px;padding:7px 14px;flex:none;transition:transform .3s var(--spring)}
+.brand:hover{transform:translateY(-2px) rotate(-.6deg)}
+.brand .logo{height:34px;display:flex;align-items:center;justify-content:center;min-width:34px}
+.brand .logo img{height:100%;width:auto;max-width:160px;object-fit:contain;display:block}
+.brand .logo .ph{font:700 12px var(--fb);color:var(--muted);padding:5px 10px;border:2px dashed #CDD5EA;border-radius:10px;white-space:nowrap}
+.brand i{width:1.5px;height:28px;background:#CFD6E4;border-radius:2px;flex:none}
+
+/* ---------- buttons ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 20px;border-radius:999px;font-weight:700;font-size:14.5px;background:#fff;border:2px solid var(--line);color:var(--ink);transition:transform .15s ease,background .2s,box-shadow .2s,color .2s,border-color .2s;white-space:nowrap;user-select:none;position:relative;overflow:hidden}
+.btn svg{width:18px;height:18px;flex:none}
+.btn:hover{border-color:var(--blue);color:var(--blue-d)}
+.btn:active{transform:translateY(3px)}
+.btn.pri,.btn.blue,.btn.sun,.btn.peach,.btn.lilac,.btn.green,.btn.danger.solid{border:0;padding:13px 22px}
+.btn.sm.pri,.btn.sm.blue,.btn.sm.sun,.btn.sm.peach,.btn.sm.lilac{padding:9px 15px}
+.btn.pri,.btn.blue{background:var(--blue);color:#fff;box-shadow:0 5px 0 var(--blue-d)}
+.btn.pri:hover,.btn.blue:hover{background:#5580FF;color:#fff}
+.btn.sun{background:var(--sun);color:#3D2A00;box-shadow:0 5px 0 var(--sun-d)}
+.btn.sun:hover{background:#FFC04D;color:#3D2A00}
+.btn.peach{background:var(--peach);color:#fff;box-shadow:0 5px 0 var(--peach-d)}
+.btn.peach:hover{background:#FF9273;color:#fff}
+.btn.lilac{background:var(--lilac);color:#fff;box-shadow:0 5px 0 var(--lilac-d)}
+.btn.lilac:hover{background:#9F86FF;color:#fff}
+.btn.green{background:var(--green);color:#fff;box-shadow:0 5px 0 var(--green-d)}
+.btn.green:hover{background:#2FC883;color:#fff}
+.btn.pri:active,.btn.blue:active,.btn.sun:active,.btn.peach:active,.btn.lilac:active,.btn.green:active{box-shadow:0 2px 0 rgba(0,0,0,.25)}
+.btn.danger{background:var(--red-s);color:var(--red-d);border-color:#FFC7CD}
+.btn.danger:hover{background:var(--red);color:#fff;border-color:var(--red)}
+.btn.danger.solid{background:var(--red);color:#fff;box-shadow:0 5px 0 var(--red-d)}
+.btn.on{background:var(--red-s);color:var(--red-d);border-color:#FFC7CD;box-shadow:none;padding:11px 20px;border-width:2px;border-style:solid}
+.btn.sm{padding:8px 14px;font-size:13.5px}
+.btn.lg{padding:16px 30px;font-size:17px}
+.btn[disabled]{opacity:.45;pointer-events:none;box-shadow:none}
+.btn .rip{position:absolute;border-radius:50%;background:rgba(255,255,255,.5);transform:scale(0);animation:rip .6s ease-out forwards;pointer-events:none}
+@keyframes rip{to{transform:scale(4);opacity:0}}
+.iconbtn{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:#fff;border:2px solid var(--line);color:var(--muted);transition:.2s;flex:none}
+.iconbtn svg{width:20px;height:20px}
+.iconbtn:hover{border-color:var(--blue);color:var(--blue-d)}
+.iconbtn.gear:hover svg{animation:spin 1.4s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ---------- form controls ---------- */
+input[type=text],input[type=number],select{background:#fff;border:2px solid var(--line);border-radius:14px;padding:10px 14px;outline:none;transition:border-color .2s,box-shadow .2s;min-width:0;font-weight:500}
+input[type=text]:focus,input[type=number]:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-s)}
+input[type=number]{width:80px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:8px;border-radius:99px;background:linear-gradient(90deg,var(--c,var(--blue)) var(--p,50%),var(--line) var(--p,50%));outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#fff;border:4px solid var(--c,var(--blue));box-shadow:0 3px 8px rgba(27,33,64,.25);cursor:pointer;transition:transform .2s var(--spring)}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.15)}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:#fff;border:4px solid var(--c,var(--blue))}
+.switch{position:relative;display:inline-block;width:46px;height:27px;flex:none}
+.switch input{opacity:0;width:0;height:0}
+.switch span{position:absolute;inset:0;border-radius:99px;background:#D3DAEA;transition:.25s;cursor:pointer}
+.switch span::before{content:"";position:absolute;left:3px;top:3px;width:21px;height:21px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.2);transition:transform .3s var(--spring)}
+.switch input:checked+span{background:var(--green)}
+.switch input:checked+span::before{transform:translateX(19px)}
+
+/* ---------- badges / chips ---------- */
+.badge{display:inline-flex;align-items:center;gap:6px;font:700 12.5px var(--fb);padding:5px 12px;border-radius:999px;background:var(--bg2);color:var(--muted);white-space:nowrap}
+.badge.ok{background:var(--green-s);color:var(--green-d)}
+.badge.warn{background:var(--sun-s);color:var(--sun-d)}
+.badge.bad{background:var(--red-s);color:var(--red-d)}
+.badge.load::before{content:"";width:10px;height:10px;border-radius:50%;border:2px solid currentColor;border-right-color:transparent;animation:spin .7s linear infinite}
+.chip{display:flex;align-items:center;gap:9px;padding:8px 15px 8px 12px;border-radius:999px;background:#fff;border:2px solid var(--line);font-weight:700;font-size:13.5px;transition:all .25s var(--ease);white-space:nowrap}
+.chip:hover{border-color:var(--blue)}
+.chip svg{width:17px;height:17px;color:var(--blue)}
+.chip .dot{position:relative;width:10px;height:10px;border-radius:50%;background:#C3CCDD}
+.chip[data-s="on"]{background:var(--green-s);border-color:#A9E5C8;color:var(--green-d)}
+.chip[data-s="on"] .dot{background:var(--green)}
+.chip[data-s="on"] .dot::after{content:"";position:absolute;inset:-5px;border-radius:50%;border:2px solid var(--green);animation:ring 1.6s ease-out infinite}
+.chip[data-s="on"] svg{color:var(--green-d)}
+.chip[data-s="busy"] .dot{background:var(--sun);animation:blink .6s infinite alternate}
+@keyframes ring{from{opacity:.9;transform:scale(.5)}to{opacity:0;transform:scale(1.6)}}
+@keyframes blink{to{opacity:.3}}
+.eyebrow{display:inline-block;font-weight:800;font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--blue-d);background:var(--blue-s);padding:6px 14px;border-radius:999px;margin-bottom:16px}
+.note{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:16px;font-size:14.5px;line-height:1.5;background:var(--blue-s)}
+.note .ni{font-size:20px;line-height:1.2}
+.note.warn{background:var(--sun-s)}.note.ok{background:var(--green-s)}
+.grad{background:linear-gradient(92deg,var(--blue),var(--lilac),var(--peach),var(--sun),var(--blue));-webkit-background-clip:text;background-clip:text;color:transparent;background-size:250% 100%;animation:shine 7s linear infinite}
+@keyframes shine{to{background-position:-250% 0}}
+@keyframes rise{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+
+/* ======================= LANDING ======================= */
+.l-top{position:sticky;top:0;z-index:50;background:rgba(246,248,255,.88);backdrop-filter:blur(14px);border-bottom:1px solid transparent;transition:border-color .2s,box-shadow .2s}
+.l-top.scrolled{border-color:var(--line);box-shadow:0 8px 24px -18px rgba(27,33,64,.35)}
+.l-top .wrap{display:flex;align-items:center;justify-content:space-between;gap:20px;height:var(--navH)}
+.l-top nav{display:flex;gap:26px;align-items:center}
+.l-top nav a:not(.btn){color:var(--muted);font-weight:700;font-size:15px;position:relative}
+.l-top nav a:not(.btn)::after{content:'';position:absolute;left:0;right:100%;bottom:-6px;height:3px;border-radius:3px;background:var(--sun);transition:right .25s}
+.l-top nav a:not(.btn):hover{color:var(--ink)}
+.l-top nav a:not(.btn):hover::after{right:0}
+
+.hero{position:relative;padding:46px 0 90px;overflow:hidden}
+.blob{position:absolute;border-radius:50%;filter:blur(50px);opacity:.6;z-index:0;animation:blobMove 16s ease-in-out infinite alternate}
+.blob.b1{width:420px;height:420px;background:#CBD8FF;top:-120px;left:-100px}
+.blob.b2{width:380px;height:380px;background:#FFE3A8;top:40px;right:-80px;animation-delay:-5s}
+.blob.b3{width:320px;height:320px;background:#C9F1DC;bottom:-120px;left:38%;animation-delay:-9s}
+.blob.b4{width:240px;height:240px;background:#E4DCFF;bottom:40px;left:-60px;animation-delay:-3s}
+@keyframes blobMove{0%{transform:translate(0,0) scale(1)}50%{transform:translate(40px,30px) scale(1.08)}100%{transform:translate(-30px,50px) scale(.95)}}
+.hdots{position:absolute;inset:0;background-image:radial-gradient(rgba(27,33,64,.08) 1.2px,transparent 1.2px);background-size:26px 26px;-webkit-mask-image:linear-gradient(180deg,#000 0%,transparent 85%);mask-image:linear-gradient(180deg,#000 0%,transparent 85%)}
+.hero .wrap{position:relative;z-index:1;display:grid;grid-template-columns:1.05fr 1fr;gap:48px;align-items:center}
+.hero .wrap>div{min-width:0}
+.pill-tag{display:inline-flex;align-items:center;gap:10px;padding:6px 16px 6px 6px;border-radius:999px;background:#fff;border:2px solid var(--line);font-weight:700;font-size:13.5px;color:var(--muted);box-shadow:var(--shadow);animation:rise .7s both}
+.pill-tag i{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--dark);font-style:normal}
+.hero h1{font-size:clamp(52px,7vw,92px);font-weight:700;margin:20px 0 10px;line-height:.95;animation:rise .7s .08s both}
+.hero h2.sub{font-size:clamp(22px,2.5vw,30px);font-weight:600;margin-bottom:16px;animation:rise .7s .12s both}
+.hero h2.sub .ul{position:relative;display:inline-block;color:var(--blue-d)}
+.hero h2.sub .ul svg{position:absolute;left:0;bottom:-4px;width:100%;height:12px}
+.hero h2.sub .ul path{stroke-dasharray:400;stroke-dashoffset:400;animation:draw 1.2s .9s forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.hero p.lead{font-size:17.5px;color:var(--muted);max-width:560px;animation:rise .7s .16s both}
+.hero .cta{display:flex;gap:14px;flex-wrap:wrap;margin-top:28px;animation:rise .7s .24s both}
+.mini-stats{display:flex;gap:30px;margin-top:34px;animation:rise .7s .32s both;flex-wrap:wrap}
+.mini-stats b{font-family:var(--fd);font-size:36px;display:block;line-height:1;font-weight:700}
+.mini-stats span{font-size:13.5px;color:var(--muted);font-weight:600}
+.resume{margin-top:18px;display:inline-flex;align-items:center;gap:10px;padding:10px 16px;border-radius:14px;background:var(--green-s);color:var(--green-d);font-weight:700;font-size:14px;animation:rise .7s .3s both;flex-wrap:wrap}
+.resume button{color:var(--green-d);text-decoration:underline;font-weight:800}
+
+/* hero scene */
+.hero-art{position:relative;animation:rise .9s .2s both;max-width:540px;margin:0 auto;width:100%}
+.scanner{background:#fff;border-radius:36px;padding:14px;box-shadow:var(--shadow-lg);border:2px solid var(--line);transform:rotate(1.2deg);transition:transform .5s}
+.scanner:hover{transform:rotate(0) scale(1.01)}
+.scene{position:relative;border-radius:26px;overflow:hidden;aspect-ratio:5/4;background:#9FD58A}
+.scene svg{position:absolute;inset:0;width:100%;height:100%}
+.scene .carA{animation:carA 8s linear infinite}
+.scene .carB{animation:carB 8s linear infinite}
+@keyframes carA{0%{transform:translateX(-140px)}30%{transform:translateX(150px)}55%{transform:translateX(150px)}100%{transform:translateX(640px)}}
+@keyframes carB{0%{transform:translateX(640px)}100%{transform:translateX(-160px)}}
+.scene .lr{animation:lr 8s steps(1) infinite}.scene .ly{animation:ly 8s steps(1) infinite}.scene .lg{animation:lg 8s steps(1) infinite}
+@keyframes lr{0%{fill:#3a4565}22%{fill:#F04A5A}55%{fill:#3a4565}}
+@keyframes ly{0%{fill:#3a4565}15%{fill:#FFB020}22%{fill:#3a4565}100%{fill:#3a4565}}
+@keyframes lg{0%{fill:#22B573}15%{fill:#3a4565}55%{fill:#22B573}}
+.scene .lane{animation:lane 1.2s linear infinite}
+@keyframes lane{to{stroke-dashoffset:-40}}
+.scene .aibox rect{animation:boxpulse 1s ease-in-out infinite}
+@keyframes boxpulse{50%{stroke-width:5}}
+.scene .gatearm{transform-origin:448px 92px;animation:gatearm 8s var(--ease) infinite}
+@keyframes gatearm{0%,18%{transform:rotate(-80deg)}24%,52%{transform:rotate(0)}58%,100%{transform:rotate(-80deg)}}
+.scan-bar{display:flex;align-items:center;gap:12px;padding:14px 8px 4px}
+.scan-bar .sb-i{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:var(--blue);color:#fff}
+.scan-bar .sb-i svg{width:20px;height:20px}
+.scan-bar b{font-family:var(--fd);font-size:22px;font-weight:700}
+.scan-bar .conf{margin-left:auto;font-weight:800;font-size:13.5px;padding:6px 12px;border-radius:999px;background:var(--green-s);color:var(--green-d)}
+.float-chip{position:absolute;z-index:3;background:#fff;border-radius:16px;padding:10px 14px;box-shadow:0 16px 30px -16px rgba(27,33,64,.45);border:2px solid var(--line);display:flex;align-items:center;gap:10px;font-weight:700;font-size:13.5px;animation:floaty 5s ease-in-out infinite}
+.float-chip i{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;font-style:normal;flex:none}
+.float-chip i svg{width:19px;height:19px}
+.float-chip small{display:block;color:var(--muted);font-weight:600;font-size:11.5px;line-height:1.1}
+.float-chip b{font-family:var(--fd);font-size:18px;line-height:1.1;font-weight:700}
+.fc1{top:-18px;left:-30px}.fc2{top:30%;right:-34px;animation-delay:-1.6s}.fc3{bottom:70px;left:-40px;animation-delay:-3s}
+
+#landing{overflow-x:clip}
+.marquee{background:linear-gradient(90deg,var(--blue),var(--lilac));color:#fff;overflow:hidden;padding:16px 0;transform:rotate(-1.2deg);margin:0 -20px;box-shadow:0 20px 40px -24px rgba(61,107,255,.6)}
+.marquee .track{display:flex;gap:46px;width:max-content;animation:scrollX 36s linear infinite}
+.marquee span{font-family:var(--fd);font-weight:700;font-size:21px;display:inline-flex;align-items:center;gap:46px;white-space:nowrap}
+.marquee span::after{content:'';width:10px;height:10px;border-radius:50%;background:var(--sun)}
+.marquee span:nth-child(3n+2)::after{background:#fff}
+.marquee span:nth-child(3n)::after{background:var(--green)}
+@keyframes scrollX{to{transform:translateX(-50%)}}
+
+section.block{padding:96px 0}
+.sec-head{max-width:740px;margin:0 auto 54px;text-align:center}
+.sec-head h2{font-size:clamp(32px,4vw,50px);margin-bottom:14px}
+.sec-head p{font-size:17.5px;color:var(--muted)}
+.reveal{transform:translateY(24px);transition:opacity .7s ease,transform .7s ease;opacity:.001}
+.reveal.in{opacity:1;transform:none}
+
+.cycle{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;position:relative}
+.cycle::before{content:'';position:absolute;top:48px;left:9%;right:9%;height:4px;background:repeating-linear-gradient(90deg,var(--line) 0 12px,transparent 12px 22px)}
+.cycle::after{content:'';position:absolute;top:44px;left:9%;width:22px;height:12px;border-radius:5px;background:var(--peach);box-shadow:0 0 0 6px rgba(255,122,89,.2);animation:packet 6s linear infinite;z-index:1}
+@keyframes packet{0%{left:9%}100%{left:89%}}
+.cstep{position:relative;z-index:2;text-align:center;padding:0 4px}
+.cstep .ic{width:96px;height:96px;border-radius:30px;margin:0 auto 18px;display:grid;place-items:center;box-shadow:var(--shadow);border:3px solid #fff;transition:transform .35s var(--spring)}
+.cstep:hover .ic{transform:translateY(-8px) rotate(-6deg)}
+.cstep .ic svg{width:40px;height:40px}
+.cstep .n{font-family:var(--fd);font-weight:700;font-size:12.5px;color:var(--muted);letter-spacing:.12em}
+.cstep h3{font-size:21px;margin:4px 0 8px}
+.cstep p{color:var(--muted);font-size:14px}
+
+.models2{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.mcard{border-radius:var(--r-xl);padding:30px;position:relative;overflow:hidden}
+.mcard.a{background:linear-gradient(145deg,#FFF1D2,#FFE8E0)}
+.mcard.b{background:linear-gradient(145deg,#E5ECFF,#EEE9FF)}
+.mcard.c{background:linear-gradient(145deg,#DCF5E8,#DAF6F4)}
+.mcard.d{background:linear-gradient(145deg,#FFE4E7,#FFF1D2)}
+.mcard .tag2{display:inline-flex;gap:8px;align-items:center;background:#fff;border-radius:999px;padding:6px 14px;font-weight:800;font-size:13px}
+.mcard .tag2 .dot{width:9px;height:9px;border-radius:50%}
+.mcard h3{font-size:30px;margin:14px 0 10px}
+.mcard>p{color:var(--muted);font-size:15.5px;max-width:480px}
+.mcard ul{list-style:none;display:grid;gap:10px;margin-top:16px}
+.mcard li{display:flex;gap:10px;align-items:flex-start;font-weight:600;font-size:15px}
+.mcard li i{width:26px;height:26px;border-radius:9px;background:#fff;display:grid;place-items:center;flex:none;font-style:normal}
+.mcard li i svg{width:15px;height:15px}
+.code-demo{background:var(--dark);color:#E9ECFA;border-radius:18px;padding:16px 18px;font-family:var(--fm);font-size:13px;line-height:1.75;box-shadow:var(--shadow-lg);margin-top:18px;overflow:auto}
+.code-demo .k{color:#FFB38F}.code-demo .n{color:#FFD86B}.code-demo .c{color:#8F99BD}.code-demo .v{color:#9DB5FF}
+.netbox{margin-top:18px;background:#fff;border-radius:18px;padding:12px;box-shadow:var(--shadow)}
+.netbox svg{width:100%;height:auto}
+.unseen{max-width:900px;margin:30px auto 0;background:#fff;border:2px solid var(--line);border-radius:var(--r-xl);padding:24px 26px;display:grid;grid-template-columns:auto 1fr;gap:18px;box-shadow:var(--shadow)}
+.unseen .big{width:62px;height:62px;border-radius:20px;background:var(--sun-s);display:grid;place-items:center;font-size:30px}
+.unseen h3{font-size:22px;margin-bottom:6px}
+.unseen p{color:var(--muted);font-size:15px}
+.unseen ol{margin:10px 0 0 18px;display:grid;gap:6px;font-size:15px}
+
+.rulecards{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+.rcard{background:#fff;border:2px solid var(--line);border-radius:var(--r-xl);padding:20px;box-shadow:var(--shadow);transition:transform .3s,box-shadow .3s}
+.rcard:hover{transform:translateY(-6px);box-shadow:var(--shadow-lg)}
+.rcard .ri{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;font-size:24px;margin-bottom:12px}
+.rcard .w{font:800 11.5px var(--fb);letter-spacing:.12em;color:var(--muted)}
+.rcard p{font-size:15px;font-weight:600;margin-top:4px}
+.rcard p b{color:var(--blue-d)}
+
+.kit{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.kpart{background:#fff;border-radius:20px;padding:20px;border:2px solid var(--line);transition:.3s;display:flex;gap:14px;align-items:flex-start}
+.kpart:hover{border-color:var(--blue);transform:translateY(-4px)}
+.kpart i{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;font-style:normal;flex:none}
+.kpart i svg{width:22px;height:22px}
+.kpart b{font-family:var(--fd);font-size:19px;font-weight:700;display:block;line-height:1.2}
+.kpart span{font-size:14px;color:var(--muted)}
+
+.cta-band{margin:0 24px;border-radius:36px;background:linear-gradient(120deg,#3D6BFF 0%,#8B6CFF 35%,#FF7A59 70%,#FFB020 100%);background-size:220% 220%;animation:gradMove 12s ease infinite;color:#fff;text-align:center;padding:72px 24px;position:relative;overflow:hidden}
+@keyframes gradMove{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+.cta-band h2{font-size:clamp(32px,4.5vw,54px);margin-bottom:12px;position:relative;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.12)}
+.cta-band p{font-size:18px;margin-bottom:26px;position:relative}
+.cta-band .btn{background:#fff;color:var(--blue-d);border:0;box-shadow:0 5px 0 rgba(0,0,0,.18);position:relative}
+.cta-band .bub{position:absolute;border-radius:50%;background:rgba(255,255,255,.16);animation:floaty 6s ease-in-out infinite}
+
+footer.site{margin-top:90px;background:var(--dark);color:#C9CFE6;position:relative}
+footer.site .fwave{position:absolute;top:-58px;left:0;right:0;height:60px;overflow:hidden}
+footer.site .fwave svg{width:200%;height:60px;animation:waveX 14s linear infinite}
+@keyframes waveX{to{transform:translateX(-50%)}}
+.f-main{display:grid;grid-template-columns:1.5fr 1fr 1fr 1.2fr;gap:40px;padding:56px 0 40px}
+.f-main .brand{display:inline-flex;margin-bottom:18px;border-color:transparent}
+.f-main p{font-size:15px;max-width:360px}
+.f-main h4{color:#fff;font-size:19px;margin-bottom:14px}
+.f-main ul{list-style:none;display:grid;gap:9px;font-size:15px}
+.f-main a{color:#C9CFE6;transition:color .2s}
+.f-main a:hover{color:var(--sun)}
+.f-badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
+.f-badges span{font-size:12px;font-weight:700;padding:5px 11px;border-radius:999px;background:rgba(255,255,255,.08);color:#E9ECFA}
+.f-made{display:flex;gap:14px;align-items:center;background:rgba(255,255,255,.06);border-radius:18px;padding:14px;margin-top:16px}
+.f-made .mk{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(135deg,var(--blue),var(--lilac));color:#fff;font:800 18px var(--fd);flex:none}
+.f-made b{color:#fff;font-family:var(--fd);font-weight:700;display:block;font-size:17px;line-height:1.2}
+.f-made span{font-size:13px}
+.f-bottom{border-top:1px solid rgba(255,255,255,.1);padding:20px 0 26px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:13.5px}
+.f-bottom b{color:#fff}
+.f-bottom .heart{color:var(--peach)}
+
+/* ======================= APP ======================= */
+.d-nav{position:sticky;top:0;z-index:40;background:rgba(255,255,255,.95);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.d-nav .wrap{display:flex;align-items:center;gap:14px;height:var(--navH);max-width:1500px}
+.d-nav::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:3px;background:repeating-linear-gradient(90deg,var(--sun) 0 26px,transparent 26px 46px);opacity:.8;animation:lanebar 1.6s linear infinite}
+@keyframes lanebar{to{background-position:46px 0}}
+.apptitle{display:flex;flex-direction:column;line-height:1.05;min-width:0}
+.apptitle b{font:800 22px var(--fd);white-space:nowrap}
+.apptitle small{font-size:11.5px;color:var(--muted);font-weight:600;white-space:nowrap}
+.modes{position:relative;display:flex;background:var(--bg2);border-radius:999px;padding:5px;margin:0 auto}
+.modes .pill{position:absolute;top:5px;bottom:5px;left:5px;border-radius:999px;background:#fff;box-shadow:0 4px 14px -6px rgba(27,33,64,.4);transition:transform .45s var(--spring),width .45s var(--spring)}
+.modes button{position:relative;z-index:1;display:flex;align-items:center;gap:8px;padding:8px 18px 8px 8px;border-radius:999px;font-weight:700;font-size:14.5px;color:var(--muted);transition:color .25s}
+.modes button .n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#fff;color:var(--ink);transition:.25s}
+.modes button .n svg{width:16px;height:16px}
+.modes button[aria-selected="true"]{color:var(--ink)}
+.modes button[aria-selected="true"] .n{background:var(--blue);color:#fff}
+.modes button[data-mode="live"][aria-selected="true"] .n{background:var(--red)}
+.nav-right{display:flex;align-items:center;gap:10px;flex:none}
+
+main.d-main{max-width:1500px;margin:0 auto;padding:26px 24px 30px}
+.view{display:none;grid-template-columns:minmax(0,1.2fr) minmax(360px,1fr);gap:22px;align-items:start}
+.view.on{display:grid;animation:stageIn .5s var(--spring) both}
+#v-live{grid-template-columns:minmax(0,1.55fr) minmax(340px,.95fr)}
+@keyframes stageIn{from{opacity:0;transform:translateY(16px)}}
+.page-head{grid-column:1/-1;display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap}
+.page-head .kick{font-family:var(--fd);font-weight:700;font-size:13px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
+.page-head h1{font-size:clamp(28px,3.2vw,40px);display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:2px}
+.page-head p{color:var(--muted);font-size:15.5px;max-width:760px;margin-top:4px}
+.col{display:flex;flex-direction:column;gap:22px;min-width:0}
+.card{background:#fff;border-radius:var(--r-lg);border:2px solid var(--line);box-shadow:var(--shadow);padding:20px;min-width:0;position:relative;animation:rise .6s var(--ease) both;animation-delay:calc(var(--i,0)*70ms)}
+.cardhead{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.cardhead h3{font-size:21px}
+.cardhead .ico{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:var(--c-s,var(--blue-s));color:var(--c,var(--blue-d));flex:none}
+.cardhead .ico svg{width:19px;height:19px}
+
+/* camera stage */
+.stage{position:relative;width:100%;aspect-ratio:16/9;border-radius:20px;overflow:hidden;background:linear-gradient(160deg,#E7EEFF,#E3F8EE);border:2px solid var(--line);transition:box-shadow .3s}
+.stage video,.stage canvas{position:absolute;inset:0;width:100%;height:100%}
+.stage video{object-fit:fill;background:transparent}
+.stage #freeze{cursor:crosshair;z-index:3}
+.stage.viol{box-shadow:0 0 0 4px var(--red),0 0 40px rgba(240,74,90,.5);animation:viol .4s ease-in-out 3}
+@keyframes viol{50%{box-shadow:0 0 0 7px var(--red),0 0 70px rgba(240,74,90,.7)}}
+.stage .flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:5}
+.stage .flash.go{animation:flash .45s ease-out}
+@keyframes flash{0%{opacity:.85}100%{opacity:0}}
+.empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px;z-index:1}
+.empty h4{font-size:21px;margin-top:14px}
+.empty p{color:var(--muted);font-size:14px;margin-top:2px}
+.toyroad{width:240px;height:80px;position:relative;margin:0 auto;border-radius:16px;background:#3B4566;overflow:hidden;box-shadow:inset 0 -6px 0 rgba(0,0,0,.15)}
+.toyroad::before{content:"";position:absolute;left:0;right:0;top:37px;height:5px;background:repeating-linear-gradient(90deg,#fff 0 18px,transparent 18px 34px);animation:lanebar 1s linear infinite;background-size:34px 5px}
+.toyroad .car{position:absolute;top:12px;left:-60px;width:52px;height:22px;border-radius:9px 12px 6px 6px;background:var(--peach);animation:drive 3.2s linear infinite}
+.toyroad .car::before,.toyroad .car::after{content:"";position:absolute;bottom:-5px;width:11px;height:11px;border-radius:50%;background:#1B2140;border:2px solid #fff;left:7px}
+.toyroad .car::after{left:auto;right:7px}
+.toyroad .car.c2{top:48px;background:var(--sun);animation-duration:4.4s;animation-delay:-2s;animation-direction:reverse;width:62px}
+.toyroad .car.c3{top:48px;background:var(--lilac);animation-duration:4.4s;animation-delay:-4.2s;animation-direction:reverse}
+@keyframes drive{from{transform:translateX(0)}to{transform:translateX(360px)}}
+.hud{position:absolute;left:12px;top:12px;z-index:4;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}
+.hud .hp{display:flex;align-items:center;gap:7px;font:800 14px var(--fd);background:rgba(255,255,255,.94);border-radius:99px;padding:5px 12px;box-shadow:0 6px 16px -8px rgba(0,0,0,.4)}
+.hud .hp i{width:10px;height:10px;border-radius:50%;background:var(--c)}
+.linehelp{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:4;background:rgba(27,33,64,.88);color:#fff;font:700 14px var(--fd);padding:7px 16px;border-radius:99px;pointer-events:none;white-space:nowrap}
+.camctl{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;align-items:center}
+
+/* steps */
+.steps{display:flex;gap:4px;background:var(--bg2);border-radius:999px;padding:5px;margin-bottom:18px;overflow-x:auto;scrollbar-width:none}
+.steps::-webkit-scrollbar{display:none}
+.steps button{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:7px 12px 7px 7px;border-radius:999px;font-weight:700;font-size:13.5px;color:var(--muted);transition:.25s;white-space:nowrap;position:relative}
+.steps button .n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#fff;color:var(--c);transition:.25s;flex:none}
+.steps button .n svg{width:15px;height:15px}
+.steps button:hover{color:var(--ink)}
+.steps button[aria-selected="true"]{background:#fff;color:var(--ink);box-shadow:0 4px 14px -6px rgba(27,33,64,.4)}
+.steps button[aria-selected="true"] .n{background:var(--c);color:#fff}
+.steps button .cnt{font:800 10.5px var(--fb);background:var(--c);color:#fff;border-radius:99px;padding:1px 7px;display:none}
+.steps button .cnt.show{display:inline-block;animation:thpop .4s var(--spring)}
+.step{display:none}
+.step.on{display:block;animation:stageIn .4s var(--spring) both}
+.step h3{font-size:24px;margin-bottom:2px}
+.step>.hint{margin-bottom:14px;font-size:14.5px}
+.howto{display:flex;gap:10px;background:var(--sun-s);border-radius:16px;padding:12px 14px;font-size:14px;margin-bottom:16px;line-height:1.5}
+.howto b{font-weight:800}
+.addrow{display:flex;gap:10px;margin-bottom:16px}
+.addrow input{flex:1}
+.clslist{display:flex;flex-direction:column;gap:12px}
+.cls{border:2px solid var(--line);border-radius:20px;padding:14px 14px 14px 20px;background:#fff;position:relative;animation:pop .4s var(--spring) both;transition:border-color .2s,transform .2s}
+.cls:hover{border-color:color-mix(in srgb,var(--c) 50%,var(--line))}
+.cls::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;border-radius:18px 0 0 18px;background:var(--c)}
+@keyframes pop{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:none}}
+.cls-h{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+.cls-h .dot{width:12px;height:12px;border-radius:50%;background:var(--c);box-shadow:0 0 0 4px color-mix(in srgb,var(--c) 22%,transparent)}
+.cls-h b{font:700 19px var(--fd)}
+.cls-h .cnt{font-size:12px;font-weight:700;color:var(--muted);background:var(--bg2);padding:3px 10px;border-radius:99px}
+.cls-h .x{margin-left:auto;width:32px;height:32px;border-radius:10px;display:grid;place-items:center;color:var(--muted);transition:.2s}
+.cls-h .x:hover{background:var(--red-s);color:var(--red-d)}
+.cls-h .x svg{width:16px;height:16px}
+.thumbs{display:flex;gap:7px;flex-wrap:wrap;min-height:52px;align-items:center;margin-bottom:12px}
+.thumbs em{font-size:13px;color:var(--muted)}
+.th{position:relative;width:52px;height:52px;border-radius:13px;overflow:hidden;border:2px solid #fff;box-shadow:0 3px 10px -4px rgba(27,33,64,.45);animation:thpop .45s var(--spring) both}
+.th img{width:100%;height:100%;object-fit:cover;display:block}
+.th button{position:absolute;inset:0;background:rgba(240,74,90,.85);color:#fff;opacity:0;transition:.2s;display:grid;place-items:center}
+.th button svg{width:18px;height:18px}
+.th:hover button{opacity:1}
+.th.more{display:grid;place-items:center;background:var(--bg2);font:800 12px var(--fb);color:var(--muted)}
+@keyframes thpop{from{transform:scale(.4) rotate(-10deg);opacity:0}to{transform:none;opacity:1}}
+.dots{display:flex;gap:4px;flex-wrap:wrap;min-height:20px;margin-bottom:12px;align-items:center}
+.dots i{width:14px;height:14px;border-radius:5px;background:var(--c);opacity:.85;animation:thpop .4s var(--spring) both}
+.cls-a{display:flex;gap:10px;flex-wrap:wrap}
+.emptyhint{padding:26px;text-align:center;color:var(--muted);font-weight:600;border:2px dashed var(--line);border-radius:18px;background:#FAFBFF;font-size:14px}
+.recring{width:16px;height:16px;border-radius:50%;border:2.5px solid rgba(255,255,255,.5);border-top-color:#fff;animation:spin .8s linear infinite}
+.linelist{display:flex;flex-direction:column;gap:10px;margin-top:16px}
+.lineitem{display:flex;align-items:center;gap:12px;border:2px solid var(--line);border-radius:18px;padding:8px;animation:pop .4s var(--spring) both}
+.lineitem img{width:96px;height:54px;object-fit:cover;border-radius:11px}
+.lineitem b{font:700 17px var(--fd)}
+.meter{position:relative;height:16px;border-radius:99px;background:linear-gradient(90deg,var(--green-s),var(--sun-s) 60%,var(--red-s));overflow:hidden}
+.meter .fill{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:99px;background:linear-gradient(90deg,var(--green),var(--sun) 60%,var(--red));transition:width .08s linear}
+.meter .lim{position:absolute;top:0;bottom:0;width:3px;background:var(--ink);border-radius:2px;transition:left .3s}
+.dbbig{font:800 34px/1 var(--fd)}
+.dbbig small{font:700 13px var(--fb);color:var(--muted);margin-left:4px}
+.micbox{border-radius:20px;padding:16px;margin-bottom:16px;background:linear-gradient(145deg,var(--lilac-s),#fff);border:2px solid var(--line)}
+
+/* train step */
+.algos{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
+.algo{border-radius:20px;padding:16px;background:linear-gradient(145deg,var(--c-s),#fff);border:2px solid var(--line);position:relative;overflow:hidden}
+.algo h4{font-size:19px;display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.algo h4 svg{width:20px;height:20px;color:var(--c)}
+.algo select{width:100%;margin-bottom:10px}
+.algo .acc{font:800 30px/1 var(--fd);color:var(--c-d,var(--ink))}
+.algo .k{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--muted);margin-bottom:8px}
+.progress{height:14px;border-radius:99px;background:var(--bg2);overflow:hidden;margin:14px 0}
+.progress i{display:block;height:100%;width:0;border-radius:99px;background:repeating-linear-gradient(45deg,var(--blue) 0 12px,#6E8FFF 12px 24px);background-size:34px 34px;animation:stripes .8s linear infinite;transition:width .2s}
+@keyframes stripes{to{background-position:34px 0}}
+.brainviz{border-radius:18px;background:linear-gradient(160deg,#F2F5FF,#F2FBF7);border:2px solid var(--line);padding:10px;margin-top:12px}
+.brainviz svg{width:100%;height:auto}
+.brainviz .ln{stroke:#CBD5EE;stroke-width:1.4}
+.brainviz.run .ln{stroke:var(--blue);stroke-dasharray:4 6;animation:dash 1s linear infinite}
+@keyframes dash{to{stroke-dashoffset:-20}}
+.brainviz.run .nd{animation:nod 1s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes nod{50%{transform:scale(1.25)}}
+.explain{font-size:14px;color:var(--muted);background:var(--bg2);border-radius:16px;padding:12px 14px;margin-top:12px}
+.explain b{color:var(--ink)}
+.algo-mini{display:flex;flex-direction:column;gap:10px}
+.ai-row{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:16px;background:var(--c-s)}
+.ai-row .ic{width:34px;height:34px;border-radius:11px;background:#fff;display:grid;place-items:center;color:var(--c);flex:none}
+.ai-row .ic svg{width:18px;height:18px}
+.ai-row b{font:700 16px var(--fd);display:block;line-height:1.2}
+.ai-row span{font-size:12.5px;color:var(--muted);font-weight:600}
+
+/* live: signal */
+.signal{display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:center}
+.housing{background:linear-gradient(180deg,#2C3560,#1B2140);padding:12px;border-radius:28px;display:flex;flex-direction:column;gap:10px;box-shadow:inset 0 2px 0 rgba(255,255,255,.08),0 16px 30px -16px rgba(27,33,64,.6);position:relative;margin-bottom:24px}
+.housing::after{content:"";position:absolute;left:50%;bottom:-24px;width:14px;height:24px;transform:translateX(-50%);background:#2C3560;border-radius:0 0 6px 6px}
+.lamp{width:60px;height:60px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#4A5378,#2C3456);border:3px solid #141B33;transition:all .35s var(--ease)}
+.lamp.on{background:radial-gradient(circle at 35% 30%,#fff 0,var(--c) 30%,var(--cd) 100%);box-shadow:0 0 28px 6px color-mix(in srgb,var(--c) 70%,transparent),inset 0 0 10px rgba(255,255,255,.5);animation:glow 1.4s ease-in-out infinite}
+.lamp.r{--c:var(--red);--cd:var(--red-d)}.lamp.y{--c:var(--sun);--cd:var(--sun-d)}.lamp.g{--c:var(--green);--cd:var(--green-d)}
+@keyframes glow{50%{box-shadow:0 0 40px 10px color-mix(in srgb,var(--c) 55%,transparent),inset 0 0 10px rgba(255,255,255,.5)}}
+.seg{display:inline-flex;gap:6px;background:#121830;padding:12px 16px;border-radius:16px;box-shadow:inset 0 3px 10px rgba(0,0,0,.5)}
+.seg span{position:relative;font:800 46px/1 var(--fm);width:.62em;text-align:center;color:var(--segc,#FF4D55);text-shadow:0 0 12px var(--segc,#FF4D55)}
+.seg span::before{content:"8";position:absolute;inset:0;color:rgba(255,255,255,.06);text-shadow:none}
+.seg span.bump{animation:bump .35s var(--spring)}
+@keyframes bump{40%{transform:scale(1.18)}}
+.phase{font:800 30px var(--fd);margin-top:8px;color:var(--pc)}
+.phasebar{height:10px;border-radius:99px;background:var(--bg2);overflow:hidden;margin-top:6px}
+.phasebar i{display:block;height:100%;background:var(--pc);border-radius:99px;transition:width .25s linear}
+.manual{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+.gates{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.gate{border:2px solid var(--line);border-radius:18px;padding:12px;text-align:center;transition:.3s;background:#fff;overflow:hidden}
+.gate.open{border-color:#BDEBD3;background:linear-gradient(180deg,#fff,var(--green-s))}
+.gate.closed{border-color:#FBC5CB;background:linear-gradient(180deg,#fff,var(--red-s))}
+.gatepic{position:relative;height:84px;margin:0 auto 6px;width:100%;max-width:130px;overflow:hidden}
+.gatepic .post{position:absolute;left:14px;bottom:4px;width:12px;height:30px;border-radius:4px;background:var(--ink)}
+.gatepic .arm{position:absolute;left:20px;bottom:26px;height:9px;width:min(calc(100% - 26px),70px);border-radius:5px;transform-origin:4px 50%;background:repeating-linear-gradient(90deg,var(--red) 0 14px,#fff 14px 28px);border:2px solid var(--ink);transition:transform .9s var(--spring)}
+.gate.open .arm{transform:rotate(-78deg)}
+.gatepic .base{position:absolute;left:4px;right:4px;bottom:0;height:5px;border-radius:3px;background:#CBD3E8}
+.gate b{font:700 17px var(--fd);display:block}
+.gate span{font-size:12.5px;font-weight:800}
+.gate.open span{color:var(--green-d)}.gate.closed span{color:var(--red-d)}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px}
+.stat{border-radius:16px;padding:9px 12px;background:var(--c-s)}
+.stat b{font:800 26px/1.1 var(--fd);color:var(--c-d);display:block}
+.stat span{font-size:11.5px;color:var(--muted);font-weight:700}
+.stat b.bump{animation:bump .4s var(--spring)}
+.log{display:flex;flex-direction:column;gap:7px;max-height:280px;overflow:auto;padding-right:4px}
+.log .ev{display:flex;gap:10px;align-items:flex-start;padding:9px 12px;border-radius:14px;background:var(--bg2);font-size:14px;animation:slidein .35s var(--ease) both;border-left:5px solid var(--c,var(--blue))}
+.log .ev time{font:700 11.5px var(--fm);color:var(--muted);flex:none;margin-top:2px}
+@keyframes slidein{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:none}}
+.heard{display:flex;align-items:center;gap:10px;margin-top:12px;padding:10px 14px;border-radius:16px;background:var(--lilac-s)}
+.heard b{font:700 19px var(--fd)}
+.bars{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.bars .br{display:grid;grid-template-columns:96px 1fr 42px;gap:8px;align-items:center;font-size:12.5px;font-weight:700}
+.bars .br i{height:8px;border-radius:99px;background:var(--line);overflow:hidden;display:block}
+.bars .br i b{display:block;height:100%;background:var(--c);border-radius:99px;transition:width .2s}
+canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:14px;background:var(--bg2)}
+
+/* app footer */
+.d-foot{border-top:1px solid var(--line);background:#fff;color:var(--muted);font-size:13.5px;margin-top:20px}
+.d-foot .wrap{max-width:1500px;display:flex;align-items:center;gap:16px;justify-content:space-between;flex-wrap:wrap;padding-top:16px;padding-bottom:18px}
+.d-foot b{color:var(--ink)}
+.d-foot nav{display:flex;gap:18px}
+.d-foot nav a{font-weight:700;color:var(--muted);cursor:pointer}
+.d-foot nav a:hover{color:var(--blue-d)}
+.made{display:inline-flex;align-items:center;gap:8px;font-weight:600}
+.made .mk{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;background:linear-gradient(135deg,var(--blue),var(--lilac));color:#fff;font:800 13px var(--fd)}
+
+/* modal / settings */
+.scrim{position:fixed;inset:0;background:rgba(27,33,64,.38);backdrop-filter:blur(4px);z-index:80;display:none;align-items:center;justify-content:center;padding:20px}
+.scrim.on{display:flex;animation:fade .25s both}
+@keyframes fade{from{opacity:0}}
+.modal{background:#fff;border-radius:28px;box-shadow:var(--shadow-lg);width:min(1000px,100%);max-height:calc(100vh - 40px);display:flex;flex-direction:column;overflow:hidden;animation:mpop .4s var(--spring) both}
+.modal.small{width:min(470px,100%)}
+@keyframes mpop{from{opacity:0;transform:translateY(20px) scale(.96)}}
+.modal header{display:flex;align-items:center;gap:12px;padding:18px 22px;border-bottom:1px solid var(--line)}
+.modal header h2{font-size:26px}
+.modal .body{padding:18px 22px;overflow:auto}
+.modal footer{display:flex;gap:10px;justify-content:flex-end;padding:14px 22px 18px;border-top:1px solid var(--line);background:#FAFBFF;flex-wrap:wrap;align-items:center}
+.stabs{display:flex;gap:4px;margin:14px 22px 0;background:var(--bg2);border-radius:999px;padding:5px;flex-wrap:wrap}
+.stabs button{padding:8px 14px;border-radius:999px;font-weight:700;font-size:14px;color:var(--muted);display:flex;gap:7px;align-items:center;transition:.2s}
+.stabs button svg{width:17px;height:17px}
+.stabs button[aria-selected="true"]{color:var(--ink);background:#fff;box-shadow:0 4px 14px -6px rgba(27,33,64,.4)}
+.spane{display:none}.spane.on{display:block;animation:stageIn .3s both}
+.field{display:grid;grid-template-columns:170px 1fr 90px;gap:14px;align-items:center;padding:12px 0;border-bottom:2px dashed var(--line2)}
+.field label{font:700 17px var(--fd);display:flex;align-items:center;gap:8px}
+.field label i{width:14px;height:14px;border-radius:50%;background:var(--c)}
+.field .val{font:800 18px var(--fd);text-align:right}
+.cycle-bar{display:flex;height:36px;border-radius:12px;overflow:hidden;margin:8px 0 4px}
+.cycle-bar div{display:grid;place-items:center;color:#fff;font:800 13px var(--fb);transition:flex .4s var(--spring);min-width:34px}
+.gcards{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.gcard{border:2px solid var(--line);border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.gcard h4{font-size:18px;display:flex;align-items:center;gap:8px}
+.gcard h4 span{font:800 11px var(--fb);background:var(--ink);color:#fff;padding:3px 8px;border-radius:7px}
+.gcard .lbl{font-size:13px;font-weight:700;color:var(--muted);display:flex;justify-content:space-between}
+.horn{position:relative;height:84px;border-radius:14px;background:var(--bg2);overflow:hidden}
+.horn .hub{position:absolute;left:50%;bottom:10px;width:18px;height:18px;margin-left:-9px;border-radius:50%;background:var(--ink)}
+.horn .h{position:absolute;left:50%;bottom:19px;width:58px;height:7px;margin-top:-3.5px;border-radius:4px;transform-origin:0 50%;transition:transform .5s var(--spring)}
+.horn .h.o{background:var(--green)}.horn .h.c{background:var(--red);opacity:.8}
+.rules{display:flex;flex-direction:column;gap:12px}
+.rule{border:2px solid var(--line);border-radius:20px;padding:12px 14px;background:#fff;animation:pop .35s var(--spring) both}
+.rule.off{opacity:.55}
+.rule .rr{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-weight:700;font-size:14px}
+.rule .rr select,.rule .rr input{padding:7px 10px;font-size:13.5px;border-radius:11px}
+.rule .rr input[type=number]{width:70px}
+.rule .say{margin-top:9px;font-size:14px;color:var(--muted);background:var(--bg2);border-radius:12px;padding:8px 12px}
+.rule .say b{color:var(--ink)}
+.tag{font:800 11px var(--fb);letter-spacing:.06em;padding:4px 9px;border-radius:8px;background:var(--c-s);color:var(--c-d)}
+.presets{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 16px}
+.presets button{font-weight:700;font-size:13.5px;padding:8px 14px;border-radius:999px;background:var(--c-s);color:var(--c-d);transition:transform .2s var(--spring)}
+.presets button:hover{transform:translateY(-2px)}
+.sec h4{font-size:19px;margin:16px 0 2px}
+.sec h4:first-child{margin-top:0}
+
+/* toast */
+.toasts{position:fixed;right:24px;bottom:24px;display:flex;flex-direction:column;gap:10px;z-index:90;pointer-events:none}
+.toast{display:flex;align-items:center;gap:10px;background:#fff;border:2px solid var(--line);border-left:6px solid var(--c,var(--blue));border-radius:16px;padding:11px 15px;box-shadow:var(--shadow-lg);font-size:14px;font-weight:600;max-width:400px;animation:tin .45s var(--spring) both}
+.toast.out{animation:tout .3s ease-in forwards}
+@keyframes tin{from{opacity:0;transform:translateX(40px) scale(.95)}}
+@keyframes tout{to{opacity:0;transform:translateX(40px)}}
+
+/* responsive */
+@media (max-width:1100px){
+  .view,#v-live{grid-template-columns:minmax(0,1fr)}
+  .hero .wrap{grid-template-columns:1fr}.hero-art{max-width:480px}
+  .cycle{grid-template-columns:repeat(3,1fr);row-gap:30px}.cycle::before,.cycle::after{display:none}
+  .rulecards{grid-template-columns:1fr 1fr}.kit{grid-template-columns:1fr 1fr}.f-main{grid-template-columns:1fr 1fr}
+  .apptitle small{display:none}
+}
+@media (max-width:820px){
+  .l-top nav a:not(.btn){display:none}
+  .models2,.algos,.gcards{grid-template-columns:1fr}
+  .d-nav .wrap{flex-wrap:wrap;height:auto;padding-top:10px;padding-bottom:10px}
+  .modes{order:5;margin:0;width:100%;justify-content:center}.chip #bleTxt,.hide-sm{display:none}
+  .stats{grid-template-columns:repeat(3,1fr)}.field{grid-template-columns:1fr 70px}.field input[type=range]{grid-column:1/-1;grid-row:2}
+  .fc1,.fc2,.fc3{display:none}.kit,.rulecards,.f-main{grid-template-columns:1fr}.cycle{grid-template-columns:1fr 1fr}
+  .unseen{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}.reveal{opacity:1;transform:none}}
+</style>
+<script>function logoFail(img,name){var s=document.createElement('span');s.className='ph';s.textContent='logos/'+name;img.replaceWith(s);}</script>
+</head>
+<body>
+
+<!-- ============ ICONS ============ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-cam" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8a2 2 0 0 1 2-2h2l2-2h6l2 2h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="4"/></symbol>
+    <symbol id="i-camoff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M9 4h6l2 2h2a2 2 0 0 1 2 2v9M17 20H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h1"/><path d="M9.5 10.5a4 4 0 0 0 5 5"/></symbol>
+    <symbol id="i-flip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0 1 14-5.3L20 9M20 4v5h-5M20 12a8 8 0 0 1-14 5.3L4 15M4 20v-5h5"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></symbol>
+    <symbol id="i-brain" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 1V5a2 2 0 0 0-3-1zM15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 1"/></symbol>
+    <symbol id="i-signal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="3"/><circle cx="12" cy="7" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="17" r="1.6"/></symbol>
+    <symbol id="i-car" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 16V11l2-5h10l2 5v5M3 16h18v3H3zM5 11h14"/><circle cx="7.5" cy="19" r="1.5"/><circle cx="16.5" cy="19" r="1.5"/></symbol>
+    <symbol id="i-road" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3L4 21M16 3l4 18M12 4v3M12 11v3M12 18v2"/></symbol>
+    <symbol id="i-wave" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12h2M7 8v8M11 5v14M15 9v6M19 7v10"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+    <symbol id="i-bt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7l10 10-5 4V3l5 4L7 17"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M5 7l1 13h12l1-13M9 7V4h6v3"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M6 10l6-6 6 6M4 20h16"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M6 10l6 6 6-6M4 20h16"/></symbol>
+    <symbol id="i-snap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-rule" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-gate" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V8M4 10l16-4M2 20h6"/></symbol>
+    <symbol id="i-db" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-chip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></symbol>
+    <symbol id="i-bulb" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V16h8v-1.3A7 7 0 0 0 12 2z"/></symbol>
+    <symbol id="i-hash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10v4M10 10v4M14 10v4M17 10v4"/></symbol>
+    <symbol id="i-laptop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="11" rx="2"/><path d="M2 19h20"/></symbol>
+  </defs>
+</svg>
+
+<!-- ======================= LANDING ======================= -->
+<div id="landing">
+  <header class="l-top" id="lTop">
+    <div class="wrap">
+      <!--
+        LOGOS: put your two logo files in a folder called "logos" next to this index.html:
+           logos/logo1.png  (left)     logos/logo2.png  (right)
+        Any size or shape fits – they are scaled to the same height and keep their shape.
+        Using .jpg / .svg / .webp? Change the file names in the <img> tags (they appear 3 times).
+      -->
+      <div class="brand" aria-label="Logos">
+        <span class="logo"><img src="logos/logo1.png" alt="Logo 1" onerror="logoFail(this,'logo1.png')"></span><i></i>
+        <span class="logo"><img src="logos/logo2.png" alt="Logo 2" onerror="logoFail(this,'logo2.png')"></span>
+      </div>
+      <nav>
+        <a href="#how">How it works</a>
+        <a href="#modes2">Two modes</a>
+        <a href="#ai">The AI</a>
+        <a href="#kit">The kit</a>
+        <button class="btn pri sm" data-go="lab">Open the lab</button>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div class="blob b4"></div>
+    <div class="hdots"></div>
+    <div class="wrap">
+      <div>
+        <span class="pill-tag"><i><span class="mini-light" style="display:flex;flex-direction:column;gap:2px"><b style="width:5px;height:5px;border-radius:50%;background:#F04A5A"></b><b style="width:5px;height:5px;border-radius:50%;background:#FFB020"></b><b style="width:5px;height:5px;border-radius:50%;background:#22B573"></b></span></i>An AI + IoT activity by CognoSpace</span>
+        <h1><span class="grad">SignalSense</span></h1>
+        <h2 class="sub">Build a traffic signal that can <span class="ul">see and hear<svg viewBox="0 0 100 12" preserveAspectRatio="none"><path d="M3 8 Q 30 2 50 7 T 97 5" fill="none" stroke="#FFB020" stroke-width="5" stroke-linecap="round"/></svg></span></h2>
+        <p class="lead">Teach an AI to spot your toy vehicles and hear honking horns. Draw the stop line, set your own traffic rules, and watch an Arduino signal with real gates react when someone jumps the red light.</p>
+        <div class="cta">
+          <button class="btn pri lg" data-go="lab">Open the lab <svg><use href="#i-arrow"/></svg></button>
+          <a class="btn lg" href="#how">See how it works</a>
+        </div>
+        <div class="resume hidden" id="resumeBox">✔ Your lab is saved: <span id="resumeTxt"></span> · <button data-go="lab">Continue</button></div>
+        <div class="mini-stats">
+          <div><b>2</b><span>modes: train &amp; live</span></div>
+          <div><b>3</b><span>senses: camera, line, mic</span></div>
+          <div><b>2</b><span>servo gates</span></div>
+          <div><b>2</b><span>ways to learn</span></div>
+        </div>
+      </div>
+      <div class="hero-art">
+        <div class="float-chip fc1"><i style="background:var(--blue-s);color:var(--blue-d)"><svg><use href="#i-car"/></svg></i><div><small>AI sees</small><b>Car · 94%</b></div></div>
+        <div class="float-chip fc2"><i style="background:var(--lilac-s);color:var(--lilac-d)"><svg><use href="#i-mic"/></svg></i><div><small>Horn level</small><b>86 dB</b></div></div>
+        <div class="float-chip fc3"><i style="background:var(--red-s);color:var(--red-d)"><svg><use href="#i-clock"/></svg></i><div><small>Rule fired</small><b>Red +5 s</b></div></div>
+        <div class="scanner">
+          <div class="scene">
+            <svg viewBox="0 0 520 416" aria-hidden="true">
+              <rect width="520" height="416" fill="#A8DC92"/>
+              <circle cx="60" cy="60" r="34" fill="#8CCB76"/><circle cx="470" cy="350" r="40" fill="#8CCB76"/><circle cx="90" cy="360" r="26" fill="#8CCB76"/>
+              <rect x="0" y="140" width="520" height="150" fill="#3E4766"/>
+              <rect x="0" y="136" width="520" height="6" fill="#E9ECF5"/><rect x="0" y="288" width="520" height="6" fill="#E9ECF5"/>
+              <line class="lane" x1="0" y1="215" x2="520" y2="215" stroke="#FFD15C" stroke-width="5" stroke-dasharray="24 16"/>
+              <rect x="330" y="142" width="10" height="73" fill="#fff"/>
+              <text x="300" y="160" font-family="Baloo 2" font-weight="800" font-size="13" fill="#fff" opacity=".9" transform="rotate(-90 300 160)">STOP</text>
+              <!-- signal pole -->
+              <rect x="372" y="48" width="8" height="92" fill="#1B2140"/>
+              <rect x="356" y="20" width="40" height="92" rx="12" fill="#1B2140"/>
+              <circle class="lr" cx="376" cy="40" r="10" fill="#3a4565"/><circle class="ly" cx="376" cy="66" r="10" fill="#FFB020"/><circle class="lg" cx="376" cy="92" r="10" fill="#22B573"/>
+              <!-- gate -->
+              <rect x="442" y="84" width="12" height="56" rx="3" fill="#1B2140"/>
+              <g class="gatearm"><rect x="448" y="88" width="120" height="9" rx="4" fill="#F04A5A" stroke="#1B2140" stroke-width="2"/><rect x="470" y="88" width="14" height="9" fill="#fff"/><rect x="500" y="88" width="14" height="9" fill="#fff"/><rect x="530" y="88" width="14" height="9" fill="#fff"/></g>
+              <!-- car A with AI box -->
+              <g class="carA">
+                <g transform="translate(40 160)">
+                  <rect x="-10" y="-12" width="122" height="66" rx="12" fill="rgba(61,107,255,.14)" stroke="#3D6BFF" stroke-width="3" stroke-dasharray="7 6"/>
+                  <g class="aibox"><rect x="-10" y="-12" width="122" height="66" rx="12" fill="none" stroke="#3D6BFF" stroke-width="3"/></g>
+                  <rect x="-10" y="-38" width="88" height="22" rx="11" fill="#3D6BFF"/><text x="0" y="-22" font-family="Plus Jakarta Sans" font-weight="800" font-size="12" fill="#fff">Car 94% #1</text>
+                  <rect x="0" y="4" width="100" height="36" rx="12" fill="#FF7A59"/><rect x="24" y="10" width="44" height="24" rx="7" fill="#FFD9CC"/>
+                  <rect x="88" y="8" width="8" height="8" rx="2" fill="#FFF3B0"/><rect x="88" y="28" width="8" height="8" rx="2" fill="#FFF3B0"/>
+                </g>
+              </g>
+              <!-- car B -->
+              <g class="carB"><g transform="translate(0 232)"><rect x="0" y="4" width="120" height="40" rx="12" fill="#8B6CFF"/><rect x="34" y="10" width="54" height="28" rx="7" fill="#E3DBFF"/><rect x="4" y="10" width="8" height="8" rx="2" fill="#FFF3B0"/><rect x="4" y="30" width="8" height="8" rx="2" fill="#FFF3B0"/></g></g>
+            </svg>
+          </div>
+          <div class="scan-bar"><span class="sb-i"><svg><use href="#i-snap"/></svg></span><b>Tracking vehicles…</b><span class="conf">MediaPipe live</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="marquee"><div class="track" id="marq"></div></div>
+
+  <section class="block" id="how">
+    <div class="wrap">
+      <div class="sec-head reveal"><span class="eyebrow">How the project works</span><h2>Four training steps, then go live</h2><p>Collect examples, label them, train the AI, and watch your smart signal make decisions on its own.</p></div>
+      <div class="cycle">
+        <div class="cstep reveal"><div class="ic" style="background:var(--peach-s);color:var(--peach-d)"><svg><use href="#i-car"/></svg></div><div class="n">STEP 1</div><h3>Vehicles</h3><p>Name each type of vehicle and snap photos of your toys from every side.</p></div>
+        <div class="cstep reveal"><div class="ic" style="background:var(--blue-s);color:var(--blue-d)"><svg><use href="#i-road"/></svg></div><div class="n">STEP 2</div><h3>Road line</h3><p>Take a photo of the road and tap two points to mark the stop line.</p></div>
+        <div class="cstep reveal"><div class="ic" style="background:var(--lilac-s);color:var(--lilac-d)"><svg><use href="#i-wave"/></svg></div><div class="n">STEP 3</div><h3>Sounds</h3><p>Record short clips of horns, sirens and plain background noise.</p></div>
+        <div class="cstep reveal"><div class="ic" style="background:var(--teal-s);color:var(--teal-d)"><svg><use href="#i-brain"/></svg></div><div class="n">STEP 4</div><h3>Train the AI</h3><p>Pick KNN or a Neural Network, train it, and check its accuracy.</p></div>
+        <div class="cstep reveal"><div class="ic" style="background:var(--red-s);color:var(--red-d)"><svg><use href="#i-signal"/></svg></div><div class="n">GO LIVE</div><h3>Smart signal</h3><p>The AI watches the road, the Arduino runs the lights, gates and display.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="modes2" style="padding-top:20px">
+    <div class="wrap">
+      <div class="sec-head reveal"><span class="eyebrow">Two modes</span><h2>Teach it first, then let it run the road</h2><p>Everything you train is saved in this browser, even after a refresh, until you press Forget data.</p></div>
+      <div class="models2">
+        <div class="mcard b reveal"><span class="tag2"><span class="dot" style="background:var(--blue)"></span>Training mode</span><h3>Feed the machine data</h3><p>You are the teacher. The more varied your examples, the smarter the signal gets.</p>
+          <ul><li><i><svg><use href="#i-cam"/></svg></i>Camera on/off and switch between cameras</li><li><i><svg><use href="#i-car"/></svg></i>Label every vehicle photo with a name</li><li><i><svg><use href="#i-road"/></svg></i>Point out the stop line on a road photo</li><li><i><svg><use href="#i-mic"/></svg></i>Record and name traffic sounds with a live dB meter</li></ul></div>
+        <div class="mcard d reveal"><span class="tag2"><span class="dot" style="background:var(--red)"></span>Live mode</span><h3>The signal thinks for itself</h3><p>Google MediaPipe tracks every vehicle and draws a box around it, even ones you never trained.</p>
+          <ul><li><i><svg><use href="#i-snap"/></svg></i>Boxes and names on every vehicle it sees</li><li><i><svg><use href="#i-signal"/></svg></i>Red jumpers across the line add red time</li><li><i><svg><use href="#i-wave"/></svg></i>Honking above your dB limit adds red time</li><li><i><svg><use href="#i-hash"/></svg></i>Countdown on the 4-digit display, gates open and close</li></ul></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="ai" style="padding-top:20px">
+    <div class="wrap">
+      <div class="sec-head reveal"><span class="eyebrow">Two ways to learn</span><h2>Nearest neighbours, or a neural network</h2><p>Both start the same way: MediaPipe turns each vehicle into 1024 numbers that describe its shape and colour. Then the brain decides.</p></div>
+      <div class="models2">
+        <div class="mcard a reveal"><span class="tag2"><span class="dot" style="background:var(--sun)"></span>Way 1</span><h3>K-Nearest Neighbours</h3><p>Remembers every photo. A new vehicle is compared with all of them, and the k most similar photos vote.</p>
+          <div class="code-demo"><span class="c"># new toy on the road</span><br><span class="k">closest 3 photos</span> → <span class="v">Car</span>, <span class="v">Car</span>, <span class="v">Bus</span><br><span class="k">vote</span> → <span class="v">Car</span> <span class="n">(67%)</span><br><span class="c"># great with very few photos</span></div></div>
+        <div class="mcard b reveal"><span class="tag2"><span class="dot" style="background:var(--lilac)"></span>Way 2 · recommended</span><h3>Neural Network</h3><p>Learns which numbers really matter for each type, so it copes better with toys it has never seen.</p>
+          <div class="netbox" id="heroNet"></div></div>
+      </div>
+      <div class="unseen reveal">
+        <div class="big">🤔</div>
+        <div><h3>Will it know a car it has never seen?</h3>
+          <p><b>Boxing and tracking: yes, always.</b> MediaPipe finds vehicles without your training, so the stop-line and red-jump rules work for every vehicle. <b>Naming it: only if it looks like what you taught.</b> If you only trained “Car” with one red car, a blue truck may show as “Car (not trained)”. To make it work on new toys:</p>
+          <ol><li>Make groups by <b>type</b> (Car, Bus, Ambulance), not by one toy.</li><li>Put <b>3–4 different toys</b> in each group, from all sides.</li><li>Use the <b>Neural Network</b> brain, and test with a toy you kept aside.</li></ol></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="rules" style="padding-top:20px">
+    <div class="wrap">
+      <div class="sec-head reveal"><span class="eyebrow">Your rules</span><h2>You decide how the signal behaves</h2><p>Rules read like sentences. Change the numbers, switch them on and off, or write your own.</p></div>
+      <div class="rulecards">
+        <div class="rcard reveal"><div class="ri" style="background:var(--red-s)">🚨</div><div class="w">WHEN · THEN</div><p>A vehicle crosses the line on <b>red</b> → add <b>5 s</b> to red, gate stays shut.</p></div>
+        <div class="rcard reveal"><div class="ri" style="background:var(--lilac-s)">📢</div><div class="w">WHEN · THEN</div><p>Honking louder than <b>80 dB</b> on red → add <b>3 s</b> to red.</p></div>
+        <div class="rcard reveal"><div class="ri" style="background:var(--green-s)">🚑</div><div class="w">WHEN · THEN</div><p>The AI sees an <b>Ambulance</b> → switch to <b>green</b> right away.</p></div>
+        <div class="rcard reveal"><div class="ri" style="background:var(--blue-s)">🚗</div><div class="w">WHEN · THEN</div><p><b>3 or more</b> vehicles waiting on red → switch to <b>green</b>.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="kit" style="padding-top:20px">
+    <div class="wrap">
+      <div class="sec-head reveal"><span class="eyebrow">What you need</span><h2>On the table</h2><p>A small road, some toy vehicles and a few parts on an Arduino.</p></div>
+      <div class="kit">
+        <div class="kpart reveal"><i style="background:var(--blue-s);color:var(--blue-d)"><svg><use href="#i-chip"/></svg></i><div><b>Arduino UNO R4 WiFi</b><span>Talks to this page over Bluetooth LE.</span></div></div>
+        <div class="kpart reveal"><i style="background:var(--green-s);color:var(--green-d)"><svg><use href="#i-gate"/></svg></i><div><b>2 servo motors</b><span>Main gate follows the signal, the cross gate does the opposite.</span></div></div>
+        <div class="kpart reveal"><i style="background:var(--red-s);color:var(--red-d)"><svg><use href="#i-bulb"/></svg></i><div><b>3 LEDs</b><span>Red, yellow and green traffic lights.</span></div></div>
+        <div class="kpart reveal"><i style="background:var(--sun-s);color:var(--sun-d)"><svg><use href="#i-hash"/></svg></i><div><b>4-digit display</b><span>TM1637 module shows the seconds left.</span></div></div>
+        <div class="kpart reveal"><i style="background:var(--peach-s);color:var(--peach-d)"><svg><use href="#i-car"/></svg></i><div><b>Toy vehicles</b><span>Cars, buses, an ambulance – the more variety the better.</span></div></div>
+        <div class="kpart reveal"><i style="background:var(--lilac-s);color:var(--lilac-d)"><svg><use href="#i-laptop"/></svg></i><div><b>Laptop with camera &amp; mic</b><span>Chrome or Edge. Data stays in this browser.</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="cta-band reveal">
+    <span class="bub" style="width:120px;height:120px;left:6%;top:18%"></span>
+    <span class="bub" style="width:70px;height:70px;right:10%;top:24%;animation-delay:-2s"></span>
+    <span class="bub" style="width:180px;height:180px;right:24%;bottom:-70px;animation-delay:-4s"></span>
+    <h2>Ready to build a smarter road?</h2>
+    <p>Line up your toy vehicles, power up the Arduino and start with Step 1.</p>
+    <button class="btn lg" data-go="lab">Open the lab <svg><use href="#i-arrow"/></svg></button>
+  </div>
+
+  <footer class="site">
+    <div class="fwave"><svg viewBox="0 0 2880 60" preserveAspectRatio="none"><path d="M0 60V32C120 12 240 12 360 30S600 50 720 32 960 12 1080 30 1320 50 1440 32 1680 12 1800 30 2040 50 2160 32 2400 12 2520 30 2760 50 2880 32V60z" fill="#18203D"/></svg></div>
+    <div class="wrap">
+      <div class="f-main">
+        <div>
+          <div class="brand"><span class="logo"><img src="logos/logo1.png" alt="Logo 1" onerror="logoFail(this,'logo1.png')"></span><i></i><span class="logo"><img src="logos/logo2.png" alt="Logo 2" onerror="logoFail(this,'logo2.png')"></span></div>
+          <p>SignalSense is an AI + IoT learning activity. Students teach a traffic signal to see, hear and follow rules they write themselves.</p>
+          <div class="f-badges"><span>Computer Vision</span><span>Machine Learning</span><span>Sound AI</span><span>IoT</span><span>Arduino</span></div>
+        </div>
+        <div><h4>Activity</h4><ul><li><a href="#how">How it works</a></li><li><a href="#modes2">Two modes</a></li><li><a href="#ai">The AI</a></li><li><a href="#rules">Your rules</a></li><li><a href="#kit">The kit</a></li></ul></div>
+        <div><h4>You will learn</h4><ul><li>Collecting &amp; labelling data</li><li>KNN vs neural networks</li><li>Object tracking</li><li>Sound in decibels</li><li>Rules that control hardware</li></ul></div>
+        <div><h4>CognoSpace</h4><ul><li>Robotics, IoT and AI for schools</li><li><a href="https://www.cognospace.in" target="_blank" rel="noopener">cognospace.in</a></li></ul>
+          <div class="f-made"><span class="mk">C</span><div><b>Designed &amp; developed by CognoSpace</b><span>Experiential learning for young makers</span></div></div></div>
+      </div>
+      <div class="f-bottom"><span>© <span class="yr"></span> CognoSpace. All rights reserved.</span><span>Designed &amp; developed by <b>CognoSpace</b> <span class="heart">♥</span></span></div>
+    </div>
+  </footer>
+</div>
+
+<!-- ======================= APP ======================= -->
+<div id="appView" class="hidden">
+  <header class="d-nav">
+    <div class="wrap">
+      <div class="brand" aria-label="Logos">
+        <span class="logo"><img src="logos/logo1.png" alt="Logo 1" onerror="logoFail(this,'logo1.png')"></span><i></i>
+        <span class="logo"><img src="logos/logo2.png" alt="Logo 2" onerror="logoFail(this,'logo2.png')"></span>
+      </div>
+      <div class="apptitle"><b class="grad">SignalSense</b><small>AI Smart Traffic Lab</small></div>
+      <div class="modes" role="tablist" aria-label="Mode" id="modes">
+        <span class="pill"></span>
+        <button role="tab" data-mode="train" aria-selected="true"><span class="n"><svg><use href="#i-brain"/></svg></span>Training mode</button>
+        <button role="tab" data-mode="live" aria-selected="false"><span class="n"><svg><use href="#i-signal"/></svg></span>Live mode</button>
+      </div>
+      <div class="nav-right">
+        <button class="chip" id="bleBtn" data-s="off" title="Connect to Arduino UNO R4 over Bluetooth"><span class="dot"></span><svg><use href="#i-bt"/></svg><span id="bleTxt">Connect Arduino</span></button>
+        <button class="iconbtn gear" id="setBtn" title="Settings & rules" aria-label="Settings"><svg><use href="#i-gear"/></svg></button>
+        <button class="iconbtn" data-go="home" title="Home page" aria-label="Home"><svg><use href="#i-home"/></svg></button>
+        <button class="btn danger sm hide-sm" id="forgetBtn" title="Delete all trained data"><svg><use href="#i-trash"/></svg>Forget data</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="d-main">
+    <!-- ================= TRAINING ================= -->
+    <section class="view on" id="v-train">
+      <div class="page-head"><div><div class="kick">Training mode</div><h1>Teach the AI <span class="badge" id="mpBadge">AI vision: sleeping</span></h1><p>Give the machine examples. Every photo and sound you add is labelled with a name and saved in this browser.</p></div></div>
+      <div class="col">
+        <div class="card" style="--i:0">
+          <div class="cardhead"><span class="ico"><svg><use href="#i-cam"/></svg></span><h3>Camera</h3><span class="grow"></span><span class="badge" id="camInfo">Camera off</span></div>
+          <div class="slot" id="trainSlot"></div>
+          <div class="camctl">
+            <button class="btn pri" data-act="cam"><svg><use href="#i-cam"/></svg><span>Turn camera on</span></button>
+            <button class="btn" data-act="flip"><svg><use href="#i-flip"/></svg>Switch camera</button>
+            <label class="row" style="margin-left:auto;font-size:14px;font-weight:700;gap:8px"><span class="switch"><input type="checkbox" id="autoCrop" checked><span></span></span>Auto-box the vehicle</label>
+          </div>
+        </div>
+        <div class="card algo-mini" style="--i:1">
+          <div class="cardhead" style="margin-bottom:4px"><span class="ico" style="--c:var(--lilac-d);--c-s:var(--lilac-s)"><svg><use href="#i-brain"/></svg></span><h3>Brains the machine is using</h3></div>
+          <div id="aiRows"></div>
+        </div>
+      </div>
+
+      <div class="card" style="--i:2">
+        <nav class="steps" role="tablist">
+          <button data-step="veh" aria-selected="true" style="--c:var(--peach)"><span class="n"><svg><use href="#i-car"/></svg></span>Vehicles<span class="cnt" id="cnt-veh">0</span></button>
+          <button data-step="line" aria-selected="false" style="--c:var(--blue)"><span class="n"><svg><use href="#i-road"/></svg></span>Road line<span class="cnt" id="cnt-line">0</span></button>
+          <button data-step="snd" aria-selected="false" style="--c:var(--lilac)"><span class="n"><svg><use href="#i-wave"/></svg></span>Sounds<span class="cnt" id="cnt-snd">0</span></button>
+          <button data-step="brain" aria-selected="false" style="--c:var(--teal)"><span class="n"><svg><use href="#i-brain"/></svg></span>Train AI<span class="cnt" id="cnt-brain">!</span></button>
+        </nav>
+
+        <div class="step on" id="st-veh">
+          <h3>Step 1 · Teach the AI your vehicles</h3>
+          <p class="hint">Make one group per <b>type</b> of vehicle (Car, Bus, Ambulance…). Hold the camera button to snap lots of photos.</p>
+          <div class="howto">💡<div><b>Make it work on new toys:</b> put 3–4 <b>different</b> toys in each group and turn them around, closer and farther. 15–30 photos per group is great. Keep <b>Auto-box</b> on so MediaPipe crops just the vehicle.</div></div>
+          <div class="addrow"><input type="text" id="vName" placeholder="Vehicle type, e.g. Car, Bus, Ambulance" maxlength="24"><button class="btn peach" data-act="addV"><svg><use href="#i-plus"/></svg>Add group</button></div>
+          <div class="clslist" id="vList"></div>
+        </div>
+
+        <div class="step" id="st-line">
+          <h3>Step 2 · Mark the stop line</h3>
+          <p class="hint">If any vehicle crosses this line on red, the AI notices and your rules kick in.</p>
+          <div class="howto">🛣️<div><b>1.</b> Point the camera at your road. <b>2.</b> Press <b>Take road photo</b>. <b>3.</b> Tap <b>two points</b> where the line is. <b>4.</b> Name it and press <b>Save line</b>.</div></div>
+          <div class="row" style="margin-bottom:12px">
+            <button class="btn blue" data-act="snapRoad"><svg><use href="#i-snap"/></svg>Take road photo</button>
+            <label class="btn"><svg><use href="#i-up"/></svg>Upload photo<input type="file" accept="image/*" hidden id="roadUp"></label>
+            <button class="btn" data-act="clearPts">Redo points</button>
+          </div>
+          <div class="row">
+            <input type="text" id="lineName" class="grow" value="Stop line" maxlength="24">
+            <button class="btn green" data-act="saveLine" id="saveLineBtn" disabled><svg><use href="#i-check"/></svg>Save line</button>
+            <button class="btn" data-act="cancelLine">Close photo</button>
+          </div>
+          <div class="linelist" id="lineList"></div>
+        </div>
+
+        <div class="step" id="st-snd">
+          <h3>Step 3 · Teach the AI traffic sounds</h3>
+          <p class="hint">Record 1-second clips. Make a <b>Background</b> group (normal room noise) plus sounds like <b>Horn</b> or <b>Siren</b>.</p>
+          <div class="micbox">
+            <div class="row" style="margin-bottom:12px">
+              <button class="btn lilac" data-act="mic"><svg><use href="#i-mic"/></svg><span>Turn mic on</span></button>
+              <span class="grow"></span>
+              <span class="dbbig num"><span class="dbv">--</span><small>dB</small></span>
+            </div>
+            <div class="meter"><div class="fill"></div><div class="lim"></div></div>
+            <p class="hint" style="margin-top:8px">AI hears: <b class="heardTxt">—</b></p>
+          </div>
+          <div class="addrow"><input type="text" id="sName" placeholder="Sound name, e.g. Horn, Siren, Background" maxlength="24"><button class="btn lilac" data-act="addS"><svg><use href="#i-plus"/></svg>Add sound</button></div>
+          <div class="clslist" id="sList"></div>
+        </div>
+
+        <div class="step" id="st-brain">
+          <h3>Step 4 · Train the AI brain</h3>
+          <p class="hint">Pick how the machine learns, press Train, then compare the two ways.</p>
+          <div class="algos">
+            <div class="algo" style="--c:var(--peach);--c-s:var(--peach-s);--c-d:var(--peach-d)">
+              <h4><svg><use href="#i-car"/></svg>Vehicle brain</h4>
+              <select id="algoV"><option value="nn">Neural Network (recommended)</option><option value="knn">K-Nearest Neighbours (KNN)</option></select>
+              <div class="k" id="kVwrap">k =<input type="range" id="kV" min="1" max="9" step="2" value="3" style="--c:var(--peach)"><b id="kVv">3</b></div>
+              <div class="row"><span class="acc" id="accV">—</span><span class="hint" id="accVt">not trained</span></div>
+            </div>
+            <div class="algo" style="--c:var(--lilac);--c-s:var(--lilac-s);--c-d:var(--lilac-d)">
+              <h4><svg><use href="#i-wave"/></svg>Sound brain</h4>
+              <select id="algoS"><option value="nn">Neural Network (recommended)</option><option value="knn">K-Nearest Neighbours (KNN)</option></select>
+              <div class="k" id="kSwrap">k =<input type="range" id="kS" min="1" max="9" step="2" value="3" style="--c:var(--lilac)"><b id="kSv">3</b></div>
+              <div class="row"><span class="acc" id="accS">—</span><span class="hint" id="accSt">not trained</span></div>
+            </div>
+          </div>
+          <div class="row"><button class="btn pri lg" data-act="train" id="trainBtn"><svg><use href="#i-brain"/></svg>Train AI now</button><span class="hint" id="dataSum"></span></div>
+          <div class="progress"><i id="trainBar"></i></div>
+          <div class="brainviz" id="brainviz"></div>
+          <div class="explain" id="explain"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= LIVE ================= -->
+    <section class="view" id="v-live">
+      <div class="page-head"><div><div class="kick">Live mode</div><h1>The signal is thinking <span class="badge" id="mpBadge2">AI vision: sleeping</span></h1><p>Every vehicle gets a box, trained or not. Your rules decide what the lights and gates do.</p></div></div>
+      <div class="col">
+        <div class="card" style="--i:0">
+          <div class="stats">
+            <div class="stat" style="--c-s:var(--blue-s);--c-d:var(--blue-d)"><b id="stNow">0</b><span>Vehicles now</span></div>
+            <div class="stat" style="--c-s:var(--teal-s);--c-d:var(--teal-d)"><b id="stCross">0</b><span>Line crossings</span></div>
+            <div class="stat" style="--c-s:var(--red-s);--c-d:var(--red-d)"><b id="stViol">0</b><span>Red jumps</span></div>
+            <div class="stat" style="--c-s:var(--lilac-s);--c-d:var(--lilac-d)"><b id="stHonk">0</b><span>Loud honks</span></div>
+            <div class="stat" style="--c-s:var(--sun-s);--c-d:var(--sun-d)"><b id="stAdd">0s</b><span>Extra red time</span></div>
+          </div>
+          <div class="slot" id="liveSlot"></div>
+          <div class="camctl">
+            <button class="btn pri" data-act="cam"><svg><use href="#i-cam"/></svg><span>Turn camera on</span></button>
+            <button class="btn" data-act="flip"><svg><use href="#i-flip"/></svg>Switch camera</button>
+            <button class="btn lilac" data-act="mic"><svg><use href="#i-mic"/></svg><span>Turn mic on</span></button>
+            <button class="btn sm" data-act="resetStats" style="margin-left:auto">Reset counters</button>
+          </div>
+        </div>
+        <div class="card" style="--i:1">
+          <div class="cardhead"><span class="ico"><svg><use href="#i-list"/></svg></span><h3>What the AI did</h3><span class="grow"></span><button class="btn sm" data-act="clearLog">Clear</button></div>
+          <div class="log" id="log"></div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="card" style="--i:1">
+          <div class="cardhead"><span class="ico" style="--c:var(--red-d);--c-s:var(--red-s)"><svg><use href="#i-signal"/></svg></span><h3>Traffic signal</h3><span class="grow"></span><span class="badge" id="sigSrc">Simulator</span></div>
+          <div class="signal">
+            <div class="housing"><div class="lamp r" id="lampR"></div><div class="lamp y" id="lampY"></div><div class="lamp g" id="lampG"></div></div>
+            <div>
+              <div class="hint" style="font-weight:700;margin-bottom:6px">4-digit display</div>
+              <div class="seg" id="seg"><span></span><span></span><span></span><span></span></div>
+              <div class="phase" id="phase">GO</div>
+              <div class="phasebar"><i id="phasebar"></i></div>
+            </div>
+          </div>
+          <div class="manual">
+            <button class="btn danger" data-act="goR">Switch to RED</button>
+            <button class="btn" style="background:var(--green-s);color:var(--green-d);border-color:#BDEBD3" data-act="goG">Switch to GREEN</button>
+            <button class="btn" data-act="pause" id="pauseBtn"><svg><use href="#i-pause"/></svg><span>Pause signal</span></button>
+            <button class="btn sun" data-act="add5">+5 s red</button>
+          </div>
+        </div>
+        <div class="card" style="--i:2">
+          <div class="cardhead"><span class="ico" style="--c:var(--green-d);--c-s:var(--green-s)"><svg><use href="#i-gate"/></svg></span><h3>Gates (2 servos)</h3></div>
+          <div class="gates" id="gates"></div>
+        </div>
+        <div class="card" style="--i:3">
+          <div class="cardhead"><span class="ico" style="--c:var(--lilac-d);--c-s:var(--lilac-s)"><svg><use href="#i-mic"/></svg></span><h3>Sound level</h3><span class="grow"></span><span class="dbbig num" style="font-size:30px"><span class="dbv">--</span><small>dB</small></span></div>
+          <div class="meter"><div class="fill"></div><div class="lim"></div></div>
+          <canvas class="spark" id="spark" width="600" height="128"></canvas>
+          <div class="heard"><svg width="22" height="22" style="color:var(--lilac-d)"><use href="#i-wave"/></svg><span class="hint">AI hears:</span><b class="heardTxt">—</b></div>
+          <div class="bars" id="sbars"></div>
+        </div>
+        <div class="card algo-mini" style="--i:4">
+          <div class="cardhead" style="margin-bottom:4px"><span class="ico" style="--c:var(--lilac-d);--c-s:var(--lilac-s)"><svg><use href="#i-brain"/></svg></span><h3>Brains in use</h3><span class="grow"></span><button class="btn sm" data-act="openRules"><svg><use href="#i-rule"/></svg>Rules</button></div>
+          <div id="aiRows2"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="d-foot">
+    <div class="wrap">
+      <span><b>SignalSense</b> · AI Smart Traffic Lab</span>
+      <span class="made"><span class="mk">C</span>Designed &amp; developed by <b>CognoSpace</b></span>
+      <nav><a data-go="home">Home</a><a data-act="openRules">Rules</a><a id="footSet">Settings</a></nav>
+    </div>
+  </footer>
+</div>
+
+<!-- camera stage (moved between Training and Live) -->
+<div class="stage" id="stage">
+  <div class="empty" id="stageEmpty"><div><div class="toyroad"><div class="car"></div><div class="car c2"></div><div class="car c3"></div></div><h4>Camera is off</h4><p>Press “Turn camera on” to start</p></div></div>
+  <video id="video" playsinline muted autoplay></video>
+  <canvas id="ov"></canvas>
+  <canvas id="freeze" class="hide"></canvas>
+  <div class="hud" id="hud"></div>
+  <div class="linehelp hide" id="linehelp">Tap point 1 of the line</div>
+  <div class="flash" id="flash"></div>
+</div>
+
+<!-- ============ SETTINGS ============ -->
+<div class="scrim" id="setScrim">
+  <div class="modal" role="dialog" aria-labelledby="setH">
+    <header><span class="cardhead" style="margin:0"><span class="ico" style="--c:var(--blue-d);--c-s:var(--blue-s)"><svg><use href="#i-gear"/></svg></span></span><h2 id="setH">Settings &amp; Rules</h2><span class="grow"></span><button class="iconbtn" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
+    <div class="stabs" role="tablist">
+      <button data-st="time" aria-selected="true"><svg><use href="#i-clock"/></svg>Light timings</button>
+      <button data-st="gate" aria-selected="false"><svg><use href="#i-gate"/></svg>Gates</button>
+      <button data-st="rules" aria-selected="false"><svg><use href="#i-rule"/></svg>Rules</button>
+      <button data-st="sense" aria-selected="false"><svg><use href="#i-mic"/></svg>Mic &amp; camera</button>
+      <button data-st="data" aria-selected="false"><svg><use href="#i-db"/></svg>Data</button>
+    </div>
+    <div class="body">
+      <div class="spane on" id="sp-time">
+        <p class="hint">How long each light stays on. The 4-digit display counts down these seconds.</p>
+        <div class="cycle-bar" id="cycle"></div>
+        <div class="field" style="--c:var(--green)"><label><i></i>Green light</label><input type="range" min="3" max="60" data-set="timing.green" style="--c:var(--green)"><span class="val"></span></div>
+        <div class="field" style="--c:var(--sun)"><label><i></i>Yellow light</label><input type="range" min="1" max="10" data-set="timing.yellow" style="--c:var(--sun)"><span class="val"></span></div>
+        <div class="field" style="--c:var(--red)"><label><i></i>Red light</label><input type="range" min="3" max="60" data-set="timing.red" style="--c:var(--red)"><span class="val"></span></div>
+        <div class="field" style="--c:var(--ink)"><label><i></i>Longest allowed</label><input type="range" min="10" max="180" data-set="timing.maxPhase" style="--c:var(--ink)"><span class="val"></span></div>
+        <p class="hint" style="margin-top:8px">“Longest allowed” stops rules from making a light last forever. A red light can never be stretched beyond this.</p>
+      </div>
+      <div class="spane" id="sp-gate">
+        <p class="hint" style="margin-bottom:12px"><b>Gate 1</b> follows the signal: open on green/yellow, closed on red. <b>Gate 2</b> does the opposite (or the same, if you choose). Set the servo angles and press Test to try them on the Arduino.</p>
+        <div class="gcards" id="gcards"></div>
+      </div>
+      <div class="spane" id="sp-rules">
+        <p class="hint">Rules are “When ___ happens, do ___”. Make your own or start with a ready-made one:</p>
+        <div class="presets">
+          <button style="--c-s:var(--red-s);--c-d:var(--red-d)" data-preset="jump">+ Red-light jumper penalty</button>
+          <button style="--c-s:var(--lilac-s);--c-d:var(--lilac-d)" data-preset="honk">+ Honking penalty</button>
+          <button style="--c-s:var(--green-s);--c-d:var(--green-d)" data-preset="amb">+ Ambulance gets green</button>
+          <button style="--c-s:var(--blue-s);--c-d:var(--blue-d)" data-preset="busy">+ Busy road gets green</button>
+          <button style="--c-s:var(--sun-s);--c-d:var(--sun-d)" data-preset="blank">+ Empty rule</button>
+        </div>
+        <div class="rules" id="rules"></div>
+      </div>
+      <div class="spane" id="sp-sense">
+        <div class="sec">
+          <h4>Microphone</h4>
+          <div class="field" style="--c:var(--lilac)"><label><i></i>Mic calibration</label><input type="range" min="60" max="130" data-set="sound.calib" style="--c:var(--lilac)"><span class="val"></span></div>
+          <p class="hint">Laptop mics are not real sound meters. Adjust so a quiet room shows about 35–45 dB.</p>
+          <div class="field" style="--c:var(--lilac)"><label><i></i>Quiet below</label><input type="range" min="20" max="80" data-set="sound.gate" style="--c:var(--lilac)"><span class="val"></span></div>
+          <p class="hint">Sounds quieter than this are ignored (the AI says “Quiet”).</p>
+          <h4>Camera AI</h4>
+          <div class="field" style="--c:var(--blue)"><label><i></i>Detection confidence</label><input type="range" min="5" max="90" data-set="det.minScore" style="--c:var(--blue)"><span class="val"></span></div>
+          <div class="field" style="--c:var(--blue)"><label><i></i>Match strictness</label><input type="range" min="20" max="95" data-set="det.simThresh" style="--c:var(--blue)"><span class="val"></span></div>
+          <p class="hint">Higher = the AI only names a vehicle when it is very sure; otherwise it shows “not trained”. Lower it if your new toys are not being named.</p>
+          <div class="field" style="--c:var(--blue)"><label><i></i>Max vehicles tracked</label><input type="range" min="1" max="10" data-set="det.maxBoxes" style="--c:var(--blue)"><span class="val"></span></div>
+          <div class="field" style="grid-template-columns:1fr auto"><label style="font-size:15px">Box any object (good for toys), not only real-vehicle shapes</label><span class="switch"><input type="checkbox" data-set="det.anyObject"><span></span></span></div>
+        </div>
+      </div>
+      <div class="spane" id="sp-data">
+        <p class="hint" style="margin-bottom:12px">Everything you train is saved inside this browser and stays after refresh. It is only deleted when you press <b>Forget data</b>.</p>
+        <div class="row">
+          <button class="btn blue" data-act="export"><svg><use href="#i-down"/></svg>Download backup (.json)</button>
+          <label class="btn"><svg><use href="#i-up"/></svg>Load backup<input type="file" accept=".json,application/json" hidden id="importFile"></label>
+          <button class="btn danger" id="forgetBtn2"><svg><use href="#i-trash"/></svg>Forget data</button>
+        </div>
+        <p class="hint" style="margin-top:14px" id="dataStats"></p>
+      </div>
+    </div>
+    <footer><span class="hint" style="margin-right:auto" id="setNote">Changes are saved in this browser. Press the button to send them to the Arduino.</span><button class="btn" data-close>Close</button><button class="btn pri" data-act="saveSettings"><svg><use href="#i-check"/></svg>Save &amp; send to Arduino</button></footer>
+  </div>
+</div>
+
+<!-- confirm -->
+<div class="scrim" id="cfScrim">
+  <div class="modal small" role="alertdialog">
+    <header><h2>Forget all data?</h2></header>
+    <div class="body"><p>This deletes every vehicle photo, sound clip, road line, rule and setting. You will need to train the AI again.</p></div>
+    <footer><button class="btn" data-close>Keep my data</button><button class="btn danger solid" id="cfYes"><svg><use href="#i-trash"/></svg>Yes, forget everything</button></footer>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+'use strict';
+/* =====================================================================
+   SignalSense – AI Smart Traffic Lab
+   Camera AI : Google MediaPipe ObjectDetector (EfficientDet-Lite0) draws boxes
+               + MediaPipe ImageEmbedder (MobileNet-V3) turns each box into numbers
+               → KNN or a small Neural Network decides which vehicle it is
+   Sound AI  : frequency-band fingerprint from the mic → KNN or Neural Network
+   Arduino   : UNO R4 WiFi over Bluetooth LE (see SignalSense_R4.ino)
+   ===================================================================== */
+
+/* ---------- Bluetooth UUIDs (must match the .ino) ---------- */
+const BLE_SVC  = '19b10000-e8f2-537e-4f6c-d104768a1214';
+const BLE_CMD  = '19b10001-e8f2-537e-4f6c-d104768a1214';
+const BLE_STAT = '19b10002-e8f2-537e-4f6c-d104768a1214';
+
+/* ---------- MediaPipe ---------- */
+const MP_VERSIONS = ['0.10.35','0.10.22','0.10.21','0.10.20'];
+const DET_MODEL = 'https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/float16/1/efficientdet_lite0.tflite';
+const EMB_MODEL = 'https://storage.googleapis.com/mediapipe-models/image_embedder/mobilenet_v3_small/float32/1/mobilenet_v3_small.tflite';
+
+const COLORS = ['#FF7A59','#12B5B0','#8B6CFF','#3D6BFF','#22B573','#E86BB8','#FFB020','#F04A5A'];
+const VEHICLE_CATS = new Set(['car','truck','bus','motorcycle','bicycle','train','airplane','boat']);
+
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const uid = () => Math.random().toString(36).slice(2,8) + Date.now().toString(36).slice(-5);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+const icon = (id, sz) => `<svg${sz?` width="${sz}" height="${sz}"`:''}><use href="#${id}"/></svg>`;
+
+/* ---------- default settings ---------- */
+function defaultSettings(){
+  return {
+    timing:{green:15, yellow:3, red:15, maxPhase:60},
+    servos:[
+      {name:'Main gate',  open:90, close:0, mode:'main'},
+      {name:'Cross gate', open:90, close:0, mode:'reverse'}
+    ],
+    sound:{calib:100, gate:50},
+    det:{minScore:25, simThresh:55, maxBoxes:5, anyObject:true}
+  };
+}
+function defaultRules(){
+  return [
+    {id:uid(), on:true,  trigger:'cross', line:'any', when:'R', action:'addRed', sec:5, cool:3},
+    {id:uid(), on:true,  trigger:'loud',  db:80,      when:'R', action:'addRed', sec:3, cool:4},
+  ];
+}
+
+/* ---------- app state ---------- */
+const S = {
+  vClasses:[], vSamples:[],   // vehicles {id,name,color} / {id,cls,vec,thumb}
+  sClasses:[], sSamples:[],   // sounds   {id,name,color} / {id,cls,vec}
+  lines:[],                   // {id,name,a:{x,y},b:{x,y},thumb}  (x,y are 0..1)
+  settings:defaultSettings(),
+  rules:defaultRules(),
+  algo:{v:'nn', s:'nn', kv:3, ks:3},
+  mode:'train', step:'veh'
+};
+function deepMerge(base, add){
+  if (Array.isArray(base)) return Array.isArray(add) ? base.map((b,i)=> add[i]!==undefined ? deepMerge(b, add[i]) : b) : base;
+  if (base && typeof base === 'object'){ const o = {...base}; if (add && typeof add==='object') for (const k in add) o[k] = k in base ? deepMerge(base[k], add[k]) : add[k]; return o; }
+  return add === undefined ? base : add;
+}
+
+/* =====================================================================
+   STORAGE – IndexedDB (data survives refresh until "Forget data")
+   ===================================================================== */
+const DB = {
+  db:null,
+  open(){ return new Promise((res,rej)=>{ const r = indexedDB.open('signalsense-db', 1);
+    r.onupgradeneeded = () => { const d = r.result; ['vehicles','sounds','lines'].forEach(n => d.objectStoreNames.contains(n) || d.createObjectStore(n,{keyPath:'id'})); d.objectStoreNames.contains('kv') || d.createObjectStore('kv',{keyPath:'k'}); };
+    r.onsuccess = () => { this.db = r.result; res(); }; r.onerror = () => rej(r.error); }); },
+  all(store){ return new Promise((res,rej)=>{ if(!this.db) return res([]); const r = this.db.transaction(store).objectStore(store).getAll(); r.onsuccess=()=>res(r.result||[]); r.onerror=()=>rej(r.error); }); },
+  run(store, fn){ return new Promise((res,rej)=>{ if(!this.db) return res(); const t = this.db.transaction(store,'readwrite'); fn(t.objectStore(store)); t.oncomplete=()=>res(); t.onerror=()=>rej(t.error); }); },
+  put(store, v){ return this.run(store, s => s.put(v)).catch(e=>console.warn(e)); },
+  del(store, id){ return this.run(store, s => s.delete(id)).catch(e=>console.warn(e)); },
+  kv(k, v){ return this.put('kv', {k, v}); },
+  clearAll(){ return Promise.all(['vehicles','sounds','lines','kv'].map(n => this.run(n, s => s.clear()))); }
+};
+const saveMeta = () => { DB.kv('vClasses', S.vClasses); DB.kv('sClasses', S.sClasses); DB.kv('algo', S.algo); };
+const saveSettingsDB = () => { DB.kv('settings', S.settings); DB.kv('rules', S.rules.map(({_last, ...r}) => r)); };
+
+async function loadAll(){
+  try { await DB.open(); } catch(e){ toast('Could not open browser storage – data will not be saved.', 'bad'); return; }
+  const [v, s, l, kv] = await Promise.all([DB.all('vehicles'), DB.all('sounds'), DB.all('lines'), DB.all('kv')]);
+  S.vSamples = v; S.sSamples = s; S.lines = l;
+  for (const o of kv){
+    if (o.k==='vClasses') S.vClasses = o.v;
+    if (o.k==='sClasses') S.sClasses = o.v;
+    if (o.k==='settings') S.settings = deepMerge(defaultSettings(), o.v);
+    if (o.k==='rules' && Array.isArray(o.v)) S.rules = o.v;
+    if (o.k==='algo') S.algo = {...S.algo, ...o.v};
+  }
+}
+
+/* =====================================================================
+   MACHINE LEARNING – KNN and a tiny Neural Network (pure JavaScript)
+   ===================================================================== */
+const dot = (a,b) => { let s=0; for (let i=0;i<a.length;i++) s+=a[i]*b[i]; return s; };
+function l2(v){ let s=0; for (const x of v) s+=x*x; s=Math.sqrt(s)||1; const o=new Float32Array(v.length); for(let i=0;i<v.length;i++) o[i]=v[i]/s; return o; }
+
+const KNN = {
+  predict(vec, samples, k){
+    if (!samples.length) return null;
+    const sims = samples.map(s => ({c:s.cls, sim:dot(vec, s.vec)})).sort((a,b)=>b.sim-a.sim);
+    const top = sims.slice(0, Math.min(k, sims.length)), votes = {};
+    top.forEach(t => votes[t.c] = (votes[t.c]||0) + Math.max(t.sim, 1e-3));
+    let best=null, bv=-1, tot=0; for (const c in votes){ tot+=votes[c]; if (votes[c]>bv){ bv=votes[c]; best=c; } }
+    const probs = {}; for (const c in votes) probs[c] = votes[c]/tot;
+    return {cls:best, conf:bv/tot, sim:sims[0].sim, probs};
+  }
+};
+
+class MLP {   // input → hidden (ReLU) → softmax
+  constructor(d, h, c){ this.d=d; this.h=h; this.c=c;
+    const r = n => (Math.random()*2-1)*Math.sqrt(6/(n));
+    this.W1=Float32Array.from({length:d*h},()=>r(d+h)); this.b1=new Float32Array(h);
+    this.W2=Float32Array.from({length:h*c},()=>r(h+c)); this.b2=new Float32Array(c); }
+  forward(x){ const {d,h,c,W1,b1,W2,b2}=this, hid=new Float32Array(h), out=new Float32Array(c);
+    for (let j=0;j<h;j++){ let s=b1[j]; for (let i=0;i<d;i++) s+=x[i]*W1[i*h+j]; hid[j]=s>0?s:0; }
+    let mx=-1e9; for (let k=0;k<c;k++){ let s=b2[k]; for (let j=0;j<h;j++) s+=hid[j]*W2[j*c+k]; out[k]=s; if(s>mx) mx=s; }
+    let z=0; for (let k=0;k<c;k++){ out[k]=Math.exp(out[k]-mx); z+=out[k]; } for (let k=0;k<c;k++) out[k]/=z;
+    return {hid, out}; }
+  async train(X, Y, {epochs=60, lr=.05, onEpoch}={}){
+    const {d,h,c,W1,b1,W2,b2}=this, n=X.length, idx=[...Array(n).keys()], gh=new Float32Array(h);
+    for (let e=0;e<epochs;e++){
+      for (let i=n-1;i>0;i--){ const j=Math.random()*(i+1)|0; [idx[i],idx[j]]=[idx[j],idx[i]]; }
+      let loss=0; const a = lr*(1-e/epochs*.7);
+      for (const t of idx){ const x=X[t], y=Y[t], {hid,out}=this.forward(x); loss-=Math.log(out[y]+1e-9);
+        gh.fill(0);
+        for (let k=0;k<c;k++){ const g=out[k]-(k===y?1:0); b2[k]-=a*g; for (let j=0;j<h;j++){ gh[j]+=g*W2[j*c+k]; W2[j*c+k]-=a*(g*hid[j]+1e-4*W2[j*c+k]); } }
+        for (let j=0;j<h;j++){ if (hid[j]<=0) continue; const g=gh[j]; b1[j]-=a*g; for (let i=0;i<d;i++) W1[i*h+j]-=a*g*x[i]; }
+      }
+      if (onEpoch) onEpoch(e+1, loss/n);
+      if (e%2===1) await sleep(0);
+    }
+  }
+}
+
+const Brain = {
+  v:{mlp:null, classes:[], acc:null, trained:false, stale:true, info:''},
+  s:{mlp:null, classes:[], acc:null, trained:false, stale:true, info:''}
+};
+const samplesOf = kind => kind==='v' ? S.vSamples : S.sSamples;
+const classesOf = kind => kind==='v' ? S.vClasses : S.sClasses;
+const algoOf = kind => S.algo[kind];
+const kOf = kind => kind==='v' ? S.algo.kv : S.algo.ks;
+const clsById = (kind,id) => classesOf(kind).find(c=>c.id===id);
+
+function predict(kind, vec){
+  const samples = samplesOf(kind).filter(s => clsById(kind, s.cls));
+  if (!samples.length) return null;
+  const B = Brain[kind];
+  if (algoOf(kind)==='nn' && B.mlp && B.classes.length>1 && vec.length===B.mlp.d){
+    let nearest=-1; for (const s of samples){ const d=dot(vec,s.vec); if (d>nearest) nearest=d; }
+    const {out} = B.mlp.forward(vec); let bi=0; for (let i=1;i<out.length;i++) if (out[i]>out[bi]) bi=i;
+    const probs={}; B.classes.forEach((c,i)=>probs[c]=out[i]);
+    return {cls:B.classes[bi], conf:out[bi], sim:nearest, probs};
+  }
+  return KNN.predict(vec, samples, kOf(kind));
+}
+
+async function trainKind(kind, onProg){
+  const B = Brain[kind], samples = samplesOf(kind).filter(s=>clsById(kind,s.cls));
+  const classes = [...new Set(samples.map(s=>s.cls))];
+  B.mlp=null; B.classes=classes; B.acc=null; B.trained=false;
+  if (!samples.length){ B.info='no data yet'; onProg(1); return; }
+  if (algoOf(kind)==='knn' || classes.length<2){
+    // KNN "training" = remember every example. We test it with leave-one-out.
+    let ok=0; const k=kOf(kind);
+    for (let i=0;i<samples.length;i++){ const rest=samples.filter((_,j)=>j!==i); const p=rest.length?KNN.predict(samples[i].vec, rest, k):null; if (p && p.cls===samples[i].cls) ok++; if(i%10===0){ onProg(i/samples.length); await sleep(0);} }
+    B.acc = classes.length<2 ? null : ok/samples.length;
+    B.info = classes.length<2 ? 'add at least 2 groups' : 'tested by hiding one example at a time';
+  } else {
+    const X = samples.map(s=>s.vec), Y = samples.map(s=>classes.indexOf(s.cls));
+    const h = kind==='v' ? 24 : 32, epochs = kind==='v' ? 60 : 120;
+    const mlp = new MLP(X[0].length, h, classes.length);
+    await mlp.train(X, Y, {epochs, lr: kind==='v'?.05:.08, onEpoch:(e)=>onProg(e/epochs)});
+    let ok=0; X.forEach((x,i)=>{ const {out}=mlp.forward(x); let bi=0; for(let j=1;j<out.length;j++) if(out[j]>out[bi]) bi=j; if(bi===Y[i]) ok++; });
+    B.mlp=mlp; B.acc=ok/X.length; B.info=`${epochs} rounds · ${h} hidden neurons`;
+  }
+  B.trained=true; B.stale=false; onProg(1);
+}
+
+/* =====================================================================
+   CAMERA + MEDIAPIPE
+   ===================================================================== */
+const video = $('#video'), ov = $('#ov'), octx = ov.getContext('2d'), freeze = $('#freeze'), fctx = freeze.getContext('2d');
+const Cam = { stream:null, facing:'environment', devId:null, on:false };
+const MP = { ready:false, loading:null, det:null, emb:null };
+let lastTs = 0; const mpTs = () => (lastTs = Math.max(lastTs+1, performance.now()));
+
+function setMpBadge(s){
+  const t = {sleep:['','AI vision: sleeping'], load:['load','Loading AI vision…'], ready:['ok','AI vision ready'], fail:['bad','AI vision failed – check internet']}[s];
+  ['#mpBadge','#mpBadge2'].forEach(id => { const b=$(id); b.className='badge '+t[0]; b.textContent=t[1]; });
+}
+function loadMP(){
+  if (MP.ready) return Promise.resolve(true);
+  if (MP.loading) return MP.loading;
+  setMpBadge('load');
+  MP.loading = (async () => {
+    let vision=null, base='';
+    for (const v of MP_VERSIONS){ try { base=`https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${v}`; vision = await import(`${base}/vision_bundle.mjs`); break; } catch(e){ vision=null; } }
+    if (!vision) throw new Error('download failed');
+    const fs = await vision.FilesetResolver.forVisionTasks(`${base}/wasm`);
+    const make = async (Cls, opts) => { try { return await Cls.createFromOptions(fs, {...opts, baseOptions:{...opts.baseOptions, delegate:'GPU'}}); } catch(e){ return await Cls.createFromOptions(fs, {...opts, baseOptions:{...opts.baseOptions, delegate:'CPU'}}); } };
+    MP.det = await make(vision.ObjectDetector, {baseOptions:{modelAssetPath:DET_MODEL}, runningMode:'VIDEO', scoreThreshold:.05, maxResults:12});
+    MP.emb = await make(vision.ImageEmbedder,  {baseOptions:{modelAssetPath:EMB_MODEL}, runningMode:'IMAGE', l2Normalize:true, quantize:false});
+    MP.ready = true; setMpBadge('ready'); return true;
+  })().catch(e => { console.error(e); MP.loading=null; setMpBadge('fail'); toast('Could not load Google MediaPipe. Check the internet connection and try again.', 'bad'); return false; });
+  return MP.loading;
+}
+
+async function camStart(){
+  try{
+    const v = Cam.devId ? {deviceId:{exact:Cam.devId}} : {facingMode:{ideal:Cam.facing}};
+    Cam.stream = await navigator.mediaDevices.getUserMedia({video:{...v, width:{ideal:1280}, height:{ideal:720}}, audio:false});
+    video.srcObject = Cam.stream; await video.play().catch(()=>{});
+    Cam.on = true; camUI(); loadMP();
+  } catch(e){ console.error(e); toast('Camera blocked or not found. Allow camera access in the browser.', 'bad'); Cam.on=false; camUI(); }
+}
+function camStop(){ Cam.stream?.getTracks().forEach(t=>t.stop()); Cam.stream=null; Cam.on=false; video.srcObject=null; tracks=[]; camUI(); }
+async function camFlip(){
+  const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput');
+  if (devs.length > 1){
+    const curId = Cam.stream?.getVideoTracks()[0]?.getSettings().deviceId;
+    const i = devs.findIndex(d=>d.deviceId===curId); Cam.devId = devs[(i+1)%devs.length].deviceId;
+  } else { Cam.facing = Cam.facing==='environment' ? 'user' : 'environment'; Cam.devId=null; }
+  if (Cam.on){ camStop(); await camStart(); toast('Switched camera', 'ok'); }
+  else toast('Camera will use the other lens when you turn it on.');
+}
+function camUI(){
+  $$('[data-act="cam"]').forEach(b => { b.classList.toggle('on', Cam.on); b.classList.toggle('pri', !Cam.on); b.querySelector('span').textContent = Cam.on ? 'Turn camera off' : 'Turn camera on'; b.querySelector('use').setAttribute('href', Cam.on ? '#i-camoff' : '#i-cam'); });
+  $('#stageEmpty').classList.toggle('hide', Cam.on || !freeze.classList.contains('hide'));
+  const label = Cam.stream?.getVideoTracks()[0]?.label;
+  $('#camInfo').textContent = Cam.on ? (label ? label.slice(0,28) : 'Camera on') : 'Camera off';
+  $('#camInfo').className = 'badge' + (Cam.on ? ' ok' : '');
+}
+video.addEventListener('loadedmetadata', () => {
+  const w = video.videoWidth||1280, h = video.videoHeight||720;
+  ov.width = w; ov.height = h; $('#stage').style.aspectRatio = `${w}/${h}`;
+});
+const VW = () => video.videoWidth || ov.width || 1280, VH = () => video.videoHeight || ov.height || 720;
+
+/* crop a box from any image source into a 224×224 square (padded) */
+const cropC = Object.assign(document.createElement('canvas'), {width:224, height:224}), cropX = cropC.getContext('2d');
+function cropTo(src, box, pad=.12){
+  const side = Math.max(box.w, box.h) * (1+pad*2), cx = box.x+box.w/2, cy = box.y+box.h/2;
+  cropX.fillStyle='#8a8f99'; cropX.fillRect(0,0,224,224);
+  cropX.drawImage(src, cx-side/2, cy-side/2, side, side, 0, 0, 224, 224);
+  return cropC;
+}
+function embedCanvas(c){ const r = MP.emb.embed(c); return l2(r.embeddings[0].floatEmbedding); }
+function detect(src){
+  const r = MP.det.detectForVideo(src, mpTs()), D = S.settings.det, W = src.videoWidth||src.naturalWidth||src.width, H = src.videoHeight||src.naturalHeight||src.height;
+  return (r.detections||[]).map(d => ({x:d.boundingBox.originX, y:d.boundingBox.originY, w:d.boundingBox.width, h:d.boundingBox.height, cat:d.categories[0]?.categoryName||'object', score:d.categories[0]?.score||0}))
+    .filter(d => d.score >= D.minScore/100 && d.cat!=='person' && (D.anyObject || VEHICLE_CATS.has(d.cat)) && !(d.w>W*.97 && d.h>H*.97))
+    .sort((a,b)=>b.score-a.score);
+}
+function thumbOf(c){ const t = document.createElement('canvas'); t.width=t.height=96; t.getContext('2d').drawImage(c,0,0,96,96); return t.toDataURL('image/jpeg',.72); }
+
+/* =====================================================================
+   TRAINING · VEHICLES
+   ===================================================================== */
+let capBusy=false;
+async function captureVehicle(clsId, src){
+  if (capBusy) return; capBusy=true;
+  try{
+    src = src || video;
+    if (src===video && !Cam.on){ toast('Turn the camera on first 📷'); return; }
+    if (!await loadMP()) return;
+    const W = src.videoWidth||src.naturalWidth||src.width, H = src.videoHeight||src.naturalHeight||src.height;
+    let box = {x:0,y:0,w:W,h:H}, pad=0;
+    if ($('#autoCrop').checked){ const d = detect(src).sort((a,b)=>b.w*b.h-a.w*a.h)[0]; if (d){ box=d; pad=.12; } }
+    const c = cropTo(src, box, pad), vec = embedCanvas(c), thumb = thumbOf(c);
+    const s = {id:uid(), cls:clsId, vec, thumb};
+    S.vSamples.push(s); DB.put('vehicles', s); Brain.v.stale = true;
+    if (src===video){ const f=$('#flash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go'); }
+    renderV(); renderCounts();
+  } catch(e){ console.error(e); toast('Could not capture: '+e.message, 'bad'); }
+  finally{ capBusy=false; }
+}
+function renderV(){
+  const el = $('#vList');
+  if (!S.vClasses.length){ el.innerHTML = `<div class="emptyhint">No vehicles yet. Type a name above and press <b>Add vehicle</b> 🚗</div>`; return; }
+  el.innerHTML = S.vClasses.map(c => {
+    const ss = S.vSamples.filter(s=>s.cls===c.id), shown = ss.slice(-11).reverse();
+    return `<div class="cls" style="--c:${c.color}">
+      <div class="cls-h"><span class="dot"></span><b>${esc(c.name)}</b><span class="cnt">${ss.length} photo${ss.length===1?'':'s'}</span>
+        <button class="x" data-act="delV" data-id="${c.id}" title="Delete this vehicle">${icon('i-trash')}</button></div>
+      <div class="thumbs">${shown.map(s=>`<div class="th"><img src="${s.thumb}" alt=""><button data-act="delVS" data-id="${s.id}" title="Remove photo">${icon('i-x')}</button></div>`).join('')}${ss.length>11?`<div class="th more">+${ss.length-11}</div>`:''}${!ss.length?'<em>No photos yet – hold the camera button</em>':''}</div>
+      <div class="cls-a"><button class="btn sm peach" data-cap="${c.id}">${icon('i-cam')}Hold to capture</button>
+        <label class="btn sm">${icon('i-up')}Upload photos<input type="file" accept="image/*" multiple hidden data-up="${c.id}"></label></div>
+    </div>`; }).join('');
+}
+
+/* hold-to-capture */
+let holdT=null, holdI=null;
+document.addEventListener('pointerdown', e => {
+  const b = e.target.closest('[data-cap]'); if (!b) return;
+  e.preventDefault(); const id = b.dataset.cap; captureVehicle(id);
+  holdT = setTimeout(()=>{ holdI = setInterval(()=>captureVehicle(id), 220); }, 380);
+  b.addEventListener('pointerleave', stopHold, {once:true});
+});
+const stopHold = () => { clearTimeout(holdT); clearInterval(holdI); holdT=holdI=null; };
+['pointerup','pointercancel'].forEach(ev => document.addEventListener(ev, stopHold, true));
+
+document.addEventListener('change', async e => {
+  const up = e.target.closest('[data-up]'); if (!up) return;
+  const files=[...up.files]; up.value=''; if (!files.length) return;
+  if (!await loadMP()) return;
+  toast(`Adding ${files.length} photo${files.length>1?'s':''}…`);
+  for (const f of files){ const img = await fileToImg(f); await captureVehicle(up.dataset.up, img); await sleep(10); }
+  toast('Photos added ✔', 'ok');
+});
+function fileToImg(f){ return new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=URL.createObjectURL(f); }); }
+
+/* =====================================================================
+   TRAINING · ROAD LINE
+   ===================================================================== */
+const LineEd = { active:false, pts:[], snap:null };
+function openFreeze(drawFn, w, h){
+  freeze.width=w; freeze.height=h; LineEd.snap = document.createElement('canvas'); LineEd.snap.width=w; LineEd.snap.height=h;
+  drawFn(LineEd.snap.getContext('2d')); LineEd.pts=[]; LineEd.active=true;
+  freeze.classList.remove('hide'); $('#stage').style.aspectRatio=`${w}/${h}`; drawFreeze(); camUI();
+}
+function closeFreeze(){ LineEd.active=false; LineEd.pts=[]; freeze.classList.add('hide'); $('#linehelp').classList.add('hide'); $('#saveLineBtn').disabled=true; if (Cam.on) $('#stage').style.aspectRatio=`${VW()}/${VH()}`; camUI(); }
+function drawFreeze(){
+  const w=freeze.width, h=freeze.height; fctx.drawImage(LineEd.snap,0,0);
+  fctx.fillStyle='rgba(26,35,64,.15)'; fctx.fillRect(0,0,w,h);
+  const P = LineEd.pts.map(p=>({x:p.x*w, y:p.y*h})), sc = w/640;
+  if (P.length===2) drawLine(fctx, P[0], P[1], '#3D6BFF', $('#lineName').value||'Line', sc, true);
+  P.forEach((p,i)=>{ fctx.beginPath(); fctx.arc(p.x,p.y,11*sc,0,7); fctx.fillStyle='#fff'; fctx.fill(); fctx.lineWidth=4*sc; fctx.strokeStyle='#3D6BFF'; fctx.stroke(); fctx.fillStyle='#1A2340'; fctx.font=`700 ${12*sc}px Plus Jakarta Sans`; fctx.textAlign='center'; fctx.textBaseline='middle'; fctx.fillText(i+1,p.x,p.y+1); });
+  const lh=$('#linehelp'); lh.classList.toggle('hide', !LineEd.active);
+  lh.textContent = LineEd.pts.length===0 ? 'Tap point 1 of the line' : LineEd.pts.length===1 ? 'Now tap point 2' : 'Looks good? Press “Save line”';
+  $('#saveLineBtn').disabled = LineEd.pts.length<2;
+}
+freeze.addEventListener('pointerdown', e => {
+  if (!LineEd.active) return; const r = freeze.getBoundingClientRect();
+  const p = {x:clamp((e.clientX-r.left)/r.width,0,1), y:clamp((e.clientY-r.top)/r.height,0,1)};
+  if (LineEd.pts.length>=2) LineEd.pts=[]; LineEd.pts.push(p); drawFreeze();
+});
+$('#lineName').addEventListener('input', ()=>LineEd.active && drawFreeze());
+$('#roadUp').addEventListener('change', async e => { const f=e.target.files[0]; e.target.value=''; if(!f) return; const img=await fileToImg(f); const w=Cam.on?VW():img.naturalWidth, h=Cam.on?VH():img.naturalHeight; openFreeze(c=>c.drawImage(img,0,0,w,h), w, h); });
+function saveLine(){
+  if (LineEd.pts.length<2) return;
+  const t=document.createElement('canvas'); t.width=192; t.height=Math.round(192*freeze.height/freeze.width); t.getContext('2d').drawImage(freeze,0,0,t.width,t.height);
+  const ln = {id:uid(), name:($('#lineName').value||'Stop line').trim(), a:LineEd.pts[0], b:LineEd.pts[1], thumb:t.toDataURL('image/jpeg',.75)};
+  S.lines.push(ln); DB.put('lines', ln); closeFreeze(); renderLines(); renderCounts(); toast(`“${ln.name}” saved – the AI now watches this line 🛣️`, 'ok');
+}
+function renderLines(){
+  $('#lineList').innerHTML = S.lines.length ? S.lines.map(l=>`<div class="lineitem"><img src="${l.thumb}" alt=""><div class="grow"><b>${esc(l.name)}</b><div class="hint">Watching for vehicles crossing</div></div><button class="btn sm danger" data-act="delLine" data-id="${l.id}">${icon('i-trash')}Delete</button></div>`).join('')
+    : `<div class="emptyhint">No lines yet. Take a road photo and tap two points.</div>`;
+}
+
+/* =====================================================================
+   MICROPHONE – dB meter + sound fingerprint
+   ===================================================================== */
+const NB = 32, FRAMES = 20; // 32 frequency bands, 20 frames × 50 ms = 1 second
+const Mic = { on:false, ctx:null, an:null, stream:null, td:null, fd:null, edges:[], frames:[], db:0, dbS:0, hist:[], rec:null, iv:null, tick:0, heard:null, probs:{} };
+async function micStart(){
+  try{
+    Mic.stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false, noiseSuppression:false, autoGainControl:false}});
+    Mic.ctx = new (window.AudioContext||window.webkitAudioContext)(); await Mic.ctx.resume();
+    const src = Mic.ctx.createMediaStreamSource(Mic.stream); Mic.an = Mic.ctx.createAnalyser(); Mic.an.fftSize=2048; Mic.an.smoothingTimeConstant=0; src.connect(Mic.an);
+    Mic.td = new Float32Array(Mic.an.fftSize); Mic.fd = new Float32Array(Mic.an.frequencyBinCount);
+    const hz = Mic.ctx.sampleRate/Mic.an.fftSize; Mic.edges=[];
+    for (let i=0;i<=NB;i++) Mic.edges.push(Math.max(1, Math.round(80*Math.pow(8000/80, i/NB)/hz)));
+    Mic.on=true; Mic.iv=setInterval(micTick, 50); micUI();
+  } catch(e){ console.error(e); toast('Microphone blocked or not found. Allow mic access in the browser.', 'bad'); }
+}
+function micStop(){ clearInterval(Mic.iv); Mic.stream?.getTracks().forEach(t=>t.stop()); Mic.ctx?.close(); Object.assign(Mic,{on:false,stream:null,ctx:null,frames:[],rec:null,heard:null}); micUI(); }
+function micUI(){
+  $$('[data-act="mic"]').forEach(b => { b.classList.toggle('on', Mic.on); b.classList.toggle('lilac', !Mic.on); b.querySelector('span').textContent = Mic.on ? 'Turn mic off' : 'Turn mic on'; });
+  if (!Mic.on){ $$('.dbv').forEach(e=>e.textContent='--'); $$('.meter .fill').forEach(e=>e.style.width='0'); $$('.heardTxt').forEach(e=>e.textContent='—'); }
+}
+function micTick(){
+  const an=Mic.an; an.getFloatTimeDomainData(Mic.td);
+  let s=0; for (const x of Mic.td) s+=x*x; const rms=Math.sqrt(s/Mic.td.length);
+  Mic.db = clamp(20*Math.log10(rms+1e-9) + S.settings.sound.calib, 0, 130);
+  Mic.dbS = Mic.dbS*.6 + Mic.db*.4;
+  Mic.hist.push(Mic.db); if (Mic.hist.length>160) Mic.hist.shift();
+  an.getFloatFrequencyData(Mic.fd);
+  const fr = new Float32Array(NB);
+  for (let b=0;b<NB;b++){ let p=0, n=0; for (let i=Mic.edges[b]; i<Math.max(Mic.edges[b]+1, Mic.edges[b+1]) && i<Mic.fd.length; i++){ p+=Math.pow(10, Mic.fd[i]/10); n++; } fr[b]=Math.log10(p/(n||1)+1e-12); }
+  fr.db = Mic.db;
+  Mic.frames.push(fr); if (Mic.frames.length>40) Mic.frames.shift();
+  if (Mic.rec){ Mic.rec.frames.push(fr); if (Mic.rec.frames.length>=FRAMES){ const r=Mic.rec; Mic.rec=null; r.done(soundFeature(r.frames)); } }
+  if (++Mic.tick % 5 === 0) liveSound();
+  checkLoud();
+  drawMic();
+}
+function soundFeature(frames){
+  const m=new Float32Array(NB), sd=new Float32Array(NB), n=frames.length;
+  frames.forEach(f=>{ for(let b=0;b<NB;b++) m[b]+=f[b]/n; });
+  frames.forEach(f=>{ for(let b=0;b<NB;b++) sd[b]+=(f[b]-m[b])**2/n; });
+  let mm=0; for (let b=0;b<NB;b++){ sd[b]=Math.sqrt(sd[b]); mm+=m[b]/NB; }
+  const v = new Float32Array(NB*2); for (let b=0;b<NB;b++){ v[b]=m[b]-mm; v[NB+b]=sd[b]*1.5; }
+  return l2(v);
+}
+function liveSound(){
+  const enough = Mic.frames.length>=FRAMES, last = Mic.frames.slice(-FRAMES);
+  const loudest = last.reduce((a,f)=>Math.max(a,f.db||0),0);
+  if (!enough || loudest < S.settings.sound.gate || !S.sSamples.length){ Mic.heard = loudest < S.settings.sound.gate ? {name:'Quiet', q:true} : null; Mic.probs={}; }
+  else {
+    const p = predict('s', soundFeature(last));
+    if (p){ Mic.probs = p.probs||{}; const c = clsById('s', p.cls); Mic.heard = c && p.conf>=.5 ? {name:c.name, conf:p.conf, id:c.id} : {name:'Not sure', q:true};
+      if (Mic.heard.id) fire('sound', {label:Mic.heard.id, name:Mic.heard.name}); }
+  }
+  $$('.heardTxt').forEach(e=>e.textContent = Mic.heard ? Mic.heard.name + (Mic.heard.conf ? ` · ${Math.round(Mic.heard.conf*100)}%` : '') : '—');
+  $('#sbars').innerHTML = S.sClasses.map(c => { const v = Mic.probs[c.id]||0; return `<div class="br" style="--c:${c.color}"><span>${esc(c.name)}</span><i><b style="width:${v*100}%"></b></i><span class="num">${Math.round(v*100)}%</span></div>`; }).join('');
+}
+function loudLimit(){ const r = S.rules.find(r=>r.on && r.trigger==='loud'); return r ? +r.db : null; }
+function drawMic(){
+  const lim = loudLimit();
+  $$('.dbv').forEach(e=>e.textContent=Math.round(Mic.dbS));
+  $$('.meter').forEach(m=>{ m.querySelector('.fill').style.width = clamp((Mic.dbS-20)/100*100,0,100)+'%'; const l=m.querySelector('.lim'); l.style.display = lim?'block':'none'; if (lim) l.style.left = clamp((lim-20)/100*100,0,100)+'%'; });
+  if (S.mode!=='live') return;
+  const c=$('#spark'), x=c.getContext('2d'), w=c.width, h=c.height; x.clearRect(0,0,w,h);
+  const yOf = d => h - clamp((d-20)/100,0,1)*h;
+  if (lim){ x.strokeStyle='#F04A5A'; x.setLineDash([6,6]); x.lineWidth=2; x.beginPath(); x.moveTo(0,yOf(lim)); x.lineTo(w,yOf(lim)); x.stroke(); x.setLineDash([]); x.fillStyle='#C42F3C'; x.font='600 20px Plus Jakarta Sans'; x.fillText(`limit ${lim} dB`, 8, yOf(lim)-6); }
+  const g=x.createLinearGradient(0,0,0,h); g.addColorStop(0,'rgba(139,108,255,.55)'); g.addColorStop(1,'rgba(139,108,255,0)');
+  x.beginPath(); x.moveTo(0,h); Mic.hist.forEach((d,i)=>x.lineTo(i/(159)*w, yOf(d))); x.lineTo((Mic.hist.length-1)/159*w,h); x.closePath(); x.fillStyle=g; x.fill();
+  x.beginPath(); Mic.hist.forEach((d,i)=> i? x.lineTo(i/159*w,yOf(d)) : x.moveTo(0,yOf(d))); x.strokeStyle='#6447E0'; x.lineWidth=3; x.stroke();
+}
+function recordSound(clsId, n=1){
+  if (!Mic.on){ toast('Turn the mic on first 🎤'); return; }
+  const btns = $$(`[data-rec="${clsId}"]`); btns.forEach(b=>{ b.disabled=true; b.dataset.old=b.innerHTML; b.innerHTML='<span class="recring"></span>Listening…'; });
+  let left=n;
+  const one = () => { Mic.rec = {frames:[], done:vec => {
+    const s={id:uid(), cls:clsId, vec}; S.sSamples.push(s); DB.put('sounds', s); Brain.s.stale=true; renderS(); renderCounts();
+    if (--left>0) setTimeout(one, 120); else { $$(`[data-rec="${clsId}"]`).forEach(b=>{ b.disabled=false; }); toast('Sound saved ✔','ok'); }
+  }}; };
+  one();
+}
+function renderS(){
+  const el=$('#sList');
+  if (!S.sClasses.length){ el.innerHTML = `<div class="emptyhint">No sounds yet. Add <b>Background</b> first, then <b>Horn</b>, <b>Siren</b>… 🔊</div>`; return; }
+  el.innerHTML = S.sClasses.map(c => { const n = S.sSamples.filter(s=>s.cls===c.id).length;
+    return `<div class="cls" style="--c:${c.color}"><div class="cls-h"><span class="dot"></span><b>${esc(c.name)}</b><span class="cnt">${n} clip${n===1?'':'s'}</span><button class="x" data-act="delS" data-id="${c.id}" title="Delete this sound">${icon('i-trash')}</button></div>
+      <div class="dots">${Array.from({length:Math.min(n,40)},(_,i)=>`<i style="animation-delay:${Math.min(i,10)*20}ms"></i>`).join('')}${n>40?`<span class="hint">+${n-40}</span>`:''}${!n?'<span class="hint">No clips yet</span>':''}</div>
+      <div class="cls-a"><button class="btn sm lilac" data-rec="${c.id}" data-n="1">${icon('i-mic')}Record 1 s</button><button class="btn sm" data-rec="${c.id}" data-n="5">${icon('i-mic')}Record 5 clips</button>${n?`<button class="btn sm" data-act="undoS" data-id="${c.id}">Undo last</button>`:''}</div></div>`; }).join('');
+}
+
+/* =====================================================================
+   SIGNAL – simulator (when no Arduino) + status from Arduino
+   Commands (same text goes to the Arduino over BLE):
+     CFG,green,yellow,red,max   SRV,i,open,close,mode(0 main/1 reverse)
+     ADD,R|G,sec   GO,R|Y|G   RUN,0|1   TST,i,angle   SAVE   HELLO
+   Status back:  S,<R|Y|G>,<seconds left>,<paused 0|1>
+   ===================================================================== */
+const Sig = { state:'G', remain:0, paused:false, total:1, prevState:null };
+const Sim = {
+  phase:'G', start:0, end:0, paused:false, left:0, iv:null,
+  dur(p){ const T=S.settings.timing; return 1000*(p==='G'?T.green:p==='Y'?T.yellow:T.red); },
+  enter(p){ this.phase=p; this.start=Date.now(); this.end=this.start+this.dur(p); if (this.paused) this.left=this.dur(p); },
+  begin(){ if(!this.start) this.enter('G'); clearInterval(this.iv); this.iv=setInterval(()=>this.tick(), 200); this.tick(); },
+  stop(){ clearInterval(this.iv); this.iv=null; },
+  tick(){ const now=Date.now(); if (!this.paused && now>=this.end) this.enter(this.phase==='G'?'Y':this.phase==='Y'?'R':'G');
+    const rem = Math.ceil((this.paused?this.left:this.end-now)/1000); onStatus(`S,${this.phase},${Math.max(0,rem)},${this.paused?1:0}`); },
+  handle(cmd){ const p=cmd.split(','), now=Date.now();
+    if (p[0]==='ADD' && p[1]===this.phase){ const ms=(+p[2])*1000, cap=this.start+S.settings.timing.maxPhase*1000;
+      if (this.paused) this.left+=ms; else this.end=Math.max(this.end, Math.min(this.end+ms, cap)); }
+    else if (p[0]==='GO') this.enter(p[1]);
+    else if (p[0]==='RUN'){ if (p[1]==='0' && !this.paused){ this.paused=true; this.left=this.end-now; } else if (p[1]==='1' && this.paused){ this.paused=false; this.end=now+this.left; } }
+    if (this.iv) this.tick(); }
+};
+function send(cmd){ if (BLE.connected) BLE.write(cmd); else Sim.handle(cmd); }
+
+function onStatus(str){
+  const p = String(str).trim().split(','); if (p[0]!=='S') return;
+  const st=p[1], rem=+p[2]||0;
+  if (st!==Sig.state || rem>Sig.total){ Sig.total=Math.max(rem,1); }
+  if (st!==Sig.state){ Sig.prevState=Sig.state; Sig.state=st; logEv(st==='R'?'🔴 Light turned RED – gate 1 closes':st==='G'?'🟢 Light turned GREEN – gate 1 opens':'🟡 Light turned YELLOW', st==='R'?'var(--red)':st==='G'?'var(--green)':'var(--sun)', true); }
+  const changed = rem!==Sig.remain; Sig.remain=rem; Sig.paused=p[3]==='1';
+  renderSignal(changed);
+}
+function renderSignal(bump){
+  const st=Sig.state;
+  $('#lampR').classList.toggle('on', st==='R'); $('#lampY').classList.toggle('on', st==='Y'); $('#lampG').classList.toggle('on', st==='G');
+  const col = st==='R'?'#FF4D55':st==='Y'?'#FFC53A':'#2DE08A', pc = st==='R'?'var(--red)':st==='Y'?'var(--sun-d)':'var(--green)';
+  const txt = String(Sig.remain).padStart(4,' ').slice(-4);
+  $$('#seg span').forEach((s,i)=>{ const ch = txt[i]===' ' ? '' : txt[i]; if (s.textContent!==ch){ s.textContent=ch; if (bump){ s.classList.remove('bump'); void s.offsetWidth; s.classList.add('bump'); } } });
+  $('#seg').style.setProperty('--segc', col);
+  const ph=$('#phase'); ph.textContent = Sig.paused ? 'PAUSED' : st==='R'?'STOP':st==='Y'?'GET READY':'GO'; ph.style.setProperty('--pc', pc);
+  const bar=$('#phasebar'); bar.style.width = (Sig.remain/Sig.total*100)+'%'; bar.style.setProperty('--pc', pc); bar.parentElement.style.setProperty('--pc', pc);
+  const pb=$('#pauseBtn'); pb.querySelector('span').textContent = Sig.paused?'Resume signal':'Pause signal'; pb.querySelector('use').setAttribute('href', Sig.paused?'#i-play':'#i-pause');
+  renderGates(); renderHud();
+}
+function gateOpen(i){ const mainOpen = Sig.state!=='R'; const m = i===0 ? 'main' : S.settings.servos[i].mode; return m==='main' ? mainOpen : !mainOpen; }
+let gateKey='';
+function renderGates(force){
+  const key = Sig.state + JSON.stringify(S.settings.servos); if (!force && key===gateKey) return; gateKey=key;
+  $('#gates').innerHTML = S.settings.servos.map((s,i)=>{ const o=gateOpen(i); return `<div class="gate ${o?'open':'closed'}"><div class="gatepic"><div class="base"></div><div class="post"></div><div class="arm"></div></div><b>${esc(s.name)}</b><span>${o?'OPEN':'CLOSED'} · ${o?s.open:s.close}°</span></div>`; }).join('');
+}
+function renderHud(){
+  const st=Sig.state, c = st==='R'?'var(--red)':st==='Y'?'var(--sun)':'var(--green)';
+  $('#hud').innerHTML = (S.mode==='live' && (Cam.on)) ? `<span class="hp" style="--c:${c}"><i></i>${st==='R'?'RED':st==='Y'?'YELLOW':'GREEN'} · ${Sig.remain}s</span>${Mic.on?`<span class="hp" style="--c:var(--lilac)"><i></i>${Math.round(Mic.dbS)} dB</span>`:''}` : '';
+}
+
+/* =====================================================================
+   BLUETOOTH LE – Arduino UNO R4 WiFi
+   ===================================================================== */
+const BLE = {
+  dev:null, cmd:null, stat:null, connected:false, q:Promise.resolve(),
+  async connect(){
+    if (!navigator.bluetooth){ toast('Web Bluetooth needs Google Chrome or Microsoft Edge (desktop or Android).', 'bad'); return; }
+    try{
+      setChip('busy','Connecting…');
+      this.dev = await navigator.bluetooth.requestDevice({filters:[{services:[BLE_SVC]},{namePrefix:'SignalSense'}], optionalServices:[BLE_SVC]});
+      this.dev.addEventListener('gattserverdisconnected', ()=>this.onDisc());
+      const server = await this.dev.gatt.connect(), svc = await server.getPrimaryService(BLE_SVC);
+      this.cmd = await svc.getCharacteristic(BLE_CMD); this.stat = await svc.getCharacteristic(BLE_STAT);
+      await this.stat.startNotifications();
+      this.stat.addEventListener('characteristicvaluechanged', e => onStatus(new TextDecoder().decode(e.target.value)));
+      this.connected = true; Sim.stop(); setChip('on', this.dev.name||'Arduino connected');
+      $('#sigSrc').textContent='Arduino'; $('#sigSrc').className='badge ok';
+      pushConfig(false); this.write('HELLO');
+      toast('Arduino connected over Bluetooth 🎉', 'ok'); logEv('🔗 Arduino connected', 'var(--blue)');
+    } catch(e){ console.warn(e); setChip('off'); if (e.name!=='NotFoundError') toast('Could not connect: '+e.message, 'bad'); }
+  },
+  write(s){ this.q = this.q.then(async()=>{ if (!this.connected || !this.cmd) return; try{ const d=new TextEncoder().encode(s); if (this.cmd.writeValueWithResponse) await this.cmd.writeValueWithResponse(d); else await this.cmd.writeValue(d); await sleep(20); } catch(e){ console.warn('BLE write', s, e); } }); return this.q; },
+  disconnect(){ try{ this.dev?.gatt?.disconnect(); }catch(e){} },
+  onDisc(){
+    if (!this.connected) return; this.connected=false; setChip('off');
+    $('#sigSrc').textContent='Simulator'; $('#sigSrc').className='badge';
+    Sim.phase=Sig.state; Sim.start=Date.now(); Sim.end=Date.now()+Sig.remain*1000; Sim.paused=Sig.paused; Sim.left=Sig.remain*1000; Sim.begin();
+    toast('Arduino disconnected – using the on-screen simulator.', 'warn'); logEv('⚠️ Arduino disconnected', 'var(--sun)');
+  }
+};
+function setChip(s, txt){ const c=$('#bleBtn'); c.dataset.s=s; $('#bleTxt').textContent = txt || (s==='on'?'Connected':'Connect Arduino'); }
+function pushConfig(save){
+  const T=S.settings.timing; send(`CFG,${T.green},${T.yellow},${T.red},${T.maxPhase}`);
+  S.settings.servos.forEach((s,i)=>send(`SRV,${i},${s.open},${s.close},${i===0||s.mode==='main'?0:1}`));
+  if (save) send('SAVE');
+}
+
+/* =====================================================================
+   LIVE · tracking, line crossing, rules
+   ===================================================================== */
+let tracks=[], trackSeq=0, trainDets=[], lastDetT=0;
+const Stats = {now:0, cross:0, viol:0, honk:0, add:0};
+function setStat(k, v){ Stats[k]=v; const el=$('#st'+k[0].toUpperCase()+k.slice(1)); const t = k==='add' ? v+'s' : String(v); if (el.textContent!==t){ el.textContent=t; el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); } }
+
+function updateTracks(dets, t){
+  const W=VW(), H=VH(), maxD=Math.max(W,H)*.2, D=S.settings.det;
+  tracks.forEach(tr=>tr.matched=false);
+  for (const d of dets.slice(0, D.maxBoxes)){
+    const cx=d.x+d.w/2, cy=d.y+d.h/2; let best=null, bd=maxD;
+    for (const tr of tracks){ if (tr.matched) continue; const dd=Math.hypot(tr.cx-cx, tr.cy-cy); if (dd<bd){ bd=dd; best=tr; } }
+    if (!best){ best={id:++trackSeq, side:{}, label:null, conf:0, lastCls:-1e9, seen:0, flash:0}; tracks.push(best); }
+    Object.assign(best, {x:d.x, y:d.y, w:d.w, h:d.h, cx, cy, cat:d.cat, score:d.score, matched:true, missed:0}); best.seen++;
+    // ask the vehicle brain what this box is (twice a second per vehicle)
+    if (S.vSamples.length && t-best.lastCls>500){
+      best.lastCls=t;
+      const p = predict('v', embedCanvas(cropTo(video, d)));
+      // Neural network: trust its probability, be a bit more relaxed on "looks like a photo I saw" (helps unseen toys)
+      const nn = algoOf('v')==='nn' && Brain.v.mlp;
+      if (p && p.conf >= (nn?.6:.5) && p.sim >= D.simThresh/100 - (nn?.12:0)){ best.label=p.cls; best.conf=p.conf; const c=clsById('v',p.cls); if (c) fire('vehicle', {label:c.id, name:c.name, track:best}); }
+      else { best.label=null; best.conf=0; }
+    }
+    // line crossing test using the bottom-centre of the box (where wheels touch the road)
+    const px=cx, py=d.y+d.h;
+    for (const ln of S.lines){
+      const ax=ln.a.x*W, ay=ln.a.y*H, bx=ln.b.x*W, by=ln.b.y*H, L2=(bx-ax)**2+(by-ay)**2 || 1;
+      const side = Math.sign((bx-ax)*(py-ay)-(by-ay)*(px-ax)), tp=((px-ax)*(bx-ax)+(py-ay)*(by-ay))/L2, prev=best.side[ln.id];
+      if (side!==0){ if (prev && prev!==side && tp>-.1 && tp<1.1 && best.seen>2) onCross(best, ln, t); best.side[ln.id]=side; }
+    }
+  }
+  tracks = tracks.filter(tr=>{ if (!tr.matched) tr.missed=(tr.missed||0)+1; return tr.missed<10; });
+  const n = tracks.filter(tr=>tr.missed===0).length; if (n!==Stats.now) setStat('now', n);
+  fire('count', {n});
+}
+function vehName(tr){ const c = tr.label && clsById('v', tr.label); return c ? c.name : 'Vehicle'; }
+function onCross(tr, ln, t){
+  tr.flash=t; setStat('cross', Stats.cross+1);
+  if (Sig.state==='R'){ setStat('viol', Stats.viol+1); const st=$('#stage'); st.classList.remove('viol'); void st.offsetWidth; st.classList.add('viol'); logEv(`🚨 ${esc(vehName(tr))} #${tr.id} crossed “${esc(ln.name)}” on RED!`, 'var(--red)'); }
+  else logEv(`🚗 ${esc(vehName(tr))} #${tr.id} crossed “${esc(ln.name)}”`, 'var(--teal)');
+  fire('cross', {line:ln.id, name:ln.name});
+}
+function checkLoud(){
+  for (const r of S.rules) if (r.on && r.trigger==='loud' && Mic.db >= +r.db) { fire('loud', {db:Mic.db}); break; }
+}
+
+/* rules engine */
+const TRIG = {cross:'a vehicle crosses', loud:'the sound is louder than', sound:'the AI hears', vehicle:'the AI sees', count:'vehicles on screen are at least'};
+const ACT  = {addRed:'add seconds to RED', addGreen:'add seconds to GREEN', goRed:'switch to RED now', goGreen:'switch to GREEN now'};
+const WHEN = {R:'RED', Y:'YELLOW', G:'GREEN', any:'any colour'};
+function ruleMatches(r, trig, info){
+  if (!r.on || r.trigger!==trig) return false;
+  if (r.when!=='any' && r.when!==Sig.state) return false;
+  if (trig==='cross') return r.line==='any' || r.line===info.line;
+  if (trig==='loud') return info.db >= +r.db;
+  if (trig==='sound' || trig==='vehicle') return r.label && r.label===info.label;
+  if (trig==='count') return info.n >= +r.n;
+  return false;
+}
+function fire(trig, info){
+  if (S.mode!=='live') return;
+  const now = performance.now();
+  for (const r of S.rules){
+    if (!ruleMatches(r, trig, info)) continue;
+    if (now - (r._last||-1e9) < (+r.cool||3)*1000) continue;
+    if ((r.action==='goGreen' && Sig.state==='G') || (r.action==='goRed' && Sig.state==='R')) continue;
+    r._last = now; doAction(r, trig, info);
+  }
+}
+function doAction(r, trig, info){
+  const nm = esc(info.name||''); const why = trig==='cross' ? `vehicle crossed “${nm}”` : trig==='loud' ? `honk ${Math.round(info.db)} dB (limit ${r.db})` : trig==='sound' ? `heard ${nm}` : trig==='vehicle' ? `saw ${nm}` : `${info.n} vehicles waiting`;
+  if (trig==='loud') setStat('honk', Stats.honk+1);
+  let what='';
+  if (r.action==='addRed'){ send(`ADD,R,${r.sec}`); if (Sig.state==='R') setStat('add', Stats.add + (+r.sec)); what=`+${r.sec}s red`; }
+  if (r.action==='addGreen'){ send(`ADD,G,${r.sec}`); what=`+${r.sec}s green`; }
+  if (r.action==='goRed'){ send('GO,R'); what='switched to RED'; }
+  if (r.action==='goGreen'){ send('GO,G'); what='switched to GREEN'; }
+  logEv(`⚡ Rule: ${why} → <b>${what}</b>`, r.action.includes('Red')?'var(--red)':'var(--green)');
+  toast(`Rule fired: ${why} → ${what}`, r.action.includes('Red')?'bad':'ok');
+}
+
+/* =====================================================================
+   OVERLAY DRAWING
+   ===================================================================== */
+function rr(x, X, Y, w, h, r){ x.beginPath(); x.moveTo(X+r,Y); x.arcTo(X+w,Y,X+w,Y+h,r); x.arcTo(X+w,Y+h,X,Y+h,r); x.arcTo(X,Y+h,X,Y,r); x.arcTo(X,Y,X+w,Y,r); x.closePath(); }
+function drawLine(x, a, b, color, name, sc, glow){
+  x.save(); x.lineCap='round';
+  if (glow){ x.shadowColor=color; x.shadowBlur=18*sc; }
+  x.strokeStyle='#fff'; x.lineWidth=10*sc; x.beginPath(); x.moveTo(a.x,a.y); x.lineTo(b.x,b.y); x.stroke();
+  x.shadowBlur=0; x.strokeStyle=color; x.lineWidth=6*sc; x.setLineDash([18*sc,10*sc]); x.lineDashOffset = -(performance.now()/30)%28*sc;
+  x.beginPath(); x.moveTo(a.x,a.y); x.lineTo(b.x,b.y); x.stroke(); x.setLineDash([]);
+  const mx=(a.x+b.x)/2, my=(a.y+b.y)/2; x.font=`700 ${13*sc}px Plus Jakarta Sans`; const tw=x.measureText(name).width;
+  x.fillStyle=color; rr(x, mx-tw/2-10*sc, my-30*sc, tw+20*sc, 22*sc, 11*sc); x.fill();
+  x.fillStyle='#fff'; x.textAlign='center'; x.textBaseline='middle'; x.fillText(name, mx, my-19*sc); x.restore();
+}
+function drawBox(x, b, color, label, sc, alert){
+  const {x:X, y:Y, w, h} = b, L = Math.min(w,h)*.22;
+  x.save();
+  x.fillStyle = alert ? 'rgba(239,78,91,.22)' : color+'22'; rr(x, X, Y, w, h, 10*sc); x.fill();
+  x.strokeStyle = alert ? '#F04A5A' : color; x.lineWidth = 2*sc; x.setLineDash([6*sc,6*sc]); rr(x, X, Y, w, h, 10*sc); x.stroke(); x.setLineDash([]);
+  x.lineWidth=5*sc; x.lineCap='round'; x.beginPath();
+  [[X,Y,1,1],[X+w,Y,-1,1],[X,Y+h,1,-1],[X+w,Y+h,-1,-1]].forEach(([cx,cy,dx,dy])=>{ x.moveTo(cx,cy+dy*L); x.lineTo(cx,cy); x.lineTo(cx+dx*L,cy); });
+  x.stroke();
+  x.font=`700 ${14*sc}px Plus Jakarta Sans`; const tw=x.measureText(label).width, ph=24*sc, ly = Y-ph-6*sc < 0 ? Y+6*sc : Y-ph-6*sc;
+  x.fillStyle = alert ? '#F04A5A' : color; rr(x, X, ly, tw+20*sc, ph, 12*sc); x.fill();
+  x.fillStyle='#fff'; x.textBaseline='middle'; x.fillText(label, X+10*sc, ly+ph/2+1);
+  x.beginPath(); x.arc(X+w/2, Y+h, 5*sc, 0, 7); x.fillStyle='#fff'; x.fill(); x.lineWidth=3*sc; x.strokeStyle=alert?'#F04A5A':color; x.stroke();
+  x.restore();
+}
+function drawOverlay(t){
+  const W=ov.width, H=ov.height, sc=W/640; octx.clearRect(0,0,W,H);
+  if (!Cam.on) return;
+  const showLines = S.mode==='live' || S.step==='line';
+  if (showLines) S.lines.forEach(l => drawLine(octx, {x:l.a.x*W, y:l.a.y*H}, {x:l.b.x*W, y:l.b.y*H}, S.mode==='live' ? (Sig.state==='R'?'#F04A5A':Sig.state==='Y'?'#E0A800':'#22B573') : '#3D6BFF', l.name, sc, S.mode==='live'));
+  if (S.mode==='live'){
+    for (const tr of tracks){ if (tr.missed>2) continue;
+      const c = tr.label && clsById('v', tr.label), alert = t - tr.flash < 1500 && Sig.state==='R';
+      const base = VEHICLE_CATS.has(tr.cat) ? tr.cat[0].toUpperCase()+tr.cat.slice(1) : 'Vehicle';
+      const label = c ? `${c.name} ${Math.round(tr.conf*100)}% · #${tr.id}` : `${base}${S.vSamples.length?' (not trained)':''} · #${tr.id}`;
+      drawBox(octx, tr, c ? c.color : '#3D6BFF', label, sc, alert);
+    }
+  } else if (S.step==='veh' && $('#autoCrop').checked && trainDets.length){
+    const d = [...trainDets].sort((a,b)=>b.w*b.h-a.w*a.h)[0];
+    drawBox(octx, d, '#FF7A59', `Auto-box: ${d.cat} ${Math.round(d.score*100)}%`, sc);
+  }
+}
+function loop(t){
+  requestAnimationFrame(loop);
+  if (Cam.on && MP.ready && video.readyState>=2 && t-lastDetT>70){
+    lastDetT=t;
+    try{
+      const dets = detect(video);
+      if (S.mode==='live') updateTracks(dets, t); else trainDets = dets;
+    } catch(e){ console.warn(e); }
+  }
+  drawOverlay(t);
+}
+
+/* =====================================================================
+   EVENT LOG + TOASTS
+   ===================================================================== */
+function logEv(html, color, quiet){
+  const el=$('#log'), d=document.createElement('div'); d.className='ev'; d.style.setProperty('--c', color||'var(--blue)');
+  d.innerHTML = `<time>${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})}</time><span>${html}</span>`;
+  el.prepend(d); while (el.children.length>80) el.lastChild.remove();
+}
+function toast(msg, kind){
+  const c = {ok:'var(--green)', bad:'var(--red)', warn:'var(--sun)'}[kind] || 'var(--teal)';
+  const t=document.createElement('div'); t.className='toast'; t.style.setProperty('--c', c); t.innerHTML = msg;
+  $('#toasts').append(t); while ($('#toasts').children.length>4) $('#toasts').firstChild.remove();
+  setTimeout(()=>{ t.classList.add('out'); setTimeout(()=>t.remove(), 320); }, 3200);
+}
+
+/* =====================================================================
+   TRAIN STEP UI
+   ===================================================================== */
+const ALGO_TXT = {
+  v:{knn:k=>`<b>K-Nearest Neighbours (k=${k})</b> · MediaPipe EfficientDet boxes the object, MobileNet-V3 turns it into 1024 numbers, then the AI finds the ${k} most similar training photos and lets them vote.`,
+     nn:()=>`<b>Neural Network</b> · MediaPipe EfficientDet boxes the object, MobileNet-V3 turns it into 1024 numbers, then a small neural network (1 hidden layer) that learned from your photos picks the vehicle.`},
+  s:{knn:k=>`<b>K-Nearest Neighbours (k=${k})</b> · the mic sound is split into 32 frequency bands (a “sound fingerprint”), then the ${k} closest recorded clips vote.`,
+     nn:()=>`<b>Neural Network</b> · the 32-band sound fingerprint goes through a small neural network (32 hidden neurons) trained on your clips.`}
+};
+const algoName = kind => algoOf(kind)==='nn' ? 'Neural Network' : `KNN (k=${kOf(kind)})`;
+function renderAI(){
+  const rows = kind => { const B=Brain[kind], c = kind==='v'?{c:'var(--peach-d)',s:'var(--peach-s)',i:'i-car',t:'Vehicles'}:{c:'var(--lilac-d)',s:'var(--lilac-s)',i:'i-wave',t:'Sounds'};
+    const status = !samplesOf(kind).length ? 'no data yet' : B.acc!=null ? `accuracy ${Math.round(B.acc*100)}%${B.stale?' · new data, train again':''}` : B.stale ? 'press Train AI' : B.info;
+    return `<div class="ai-row" style="--c:${c.c};--c-s:${c.s}"><span class="ic">${icon(c.i)}</span><div class="grow"><b>${c.t}: ${algoName(kind)}</b><span>${status}</span></div></div>`; };
+  const vis = `<div class="ai-row" style="--c:var(--blue-d);--c-s:var(--blue-s)"><span class="ic">${icon('i-snap')}</span><div class="grow"><b>Tracker: Google MediaPipe</b><span>EfficientDet-Lite0 object detector + MobileNet-V3 features</span></div></div>`;
+  $('#aiRows').innerHTML = vis + rows('v') + rows('s'); $('#aiRows2').innerHTML = vis + rows('v') + rows('s');
+  const acc = (kind, el, elt) => { const B=Brain[kind]; $(el).textContent = B.acc!=null ? Math.round(B.acc*100)+'%' : '—'; $(elt).textContent = !samplesOf(kind).length ? 'no data yet' : B.trained ? (B.stale?'new data – train again':B.info) : 'not trained'; };
+  acc('v','#accV','#accVt'); acc('s','#accS','#accSt');
+  $('#kVwrap').style.display = S.algo.v==='knn'?'flex':'none'; $('#kSwrap').style.display = S.algo.s==='knn'?'flex':'none';
+  $('#explain').innerHTML = `🚗 ${ALGO_TXT.v[S.algo.v](S.algo.kv)}<br><br>🔊 ${ALGO_TXT.s[S.algo.s](S.algo.ks)}`;
+  $('#dataSum').textContent = `${S.vSamples.length} vehicle photos · ${S.sSamples.length} sound clips`;
+  renderViz(false);
+}
+function renderViz(run){
+  const isNN = S.algo.v==='nn' || S.algo.s==='nn', el=$('#brainviz'); el.classList.toggle('run', !!run);
+  if (isNN){
+    const L=[[4,'#3D6BFF'],[6,'#9C8CFF'],[3,'#10B5AE']], X=[60,250,440]; let ln='', nd='';
+    const pos = L.map(([n],li)=>Array.from({length:n},(_,i)=>({x:X[li], y:20+(i+.5)*(160/n)})));
+    for (let l=0;l<2;l++) pos[l].forEach(a=>pos[l+1].forEach(b=> ln+=`<line class="ln" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`));
+    pos.forEach((col,li)=>col.forEach((p,i)=> nd+=`<circle class="nd" cx="${p.x}" cy="${p.y}" r="11" fill="${L[li][1]}" style="animation-delay:${(li*3+i)*80}ms"/>`));
+    el.innerHTML = `<svg viewBox="0 0 500 200">${ln}${nd}<text x="60" y="196" text-anchor="middle" font-size="12" fill="#5D6787">numbers in</text><text x="250" y="196" text-anchor="middle" font-size="12" fill="#5D6787">hidden neurons</text><text x="440" y="196" text-anchor="middle" font-size="12" fill="#5D6787">answer</text></svg>`;
+  } else {
+    let dots=''; const groups=[['#FF7A59',120,70],['#10B5AE',300,120],['#9C8CFF',390,55]];
+    groups.forEach(([c,cx,cy],g)=>{ for (let i=0;i<9;i++){ const a=i*0.7+g, r=18+((i*37)%22); dots+=`<circle class="nd" cx="${cx+Math.cos(a)*r}" cy="${cy+Math.sin(a)*r}" r="7" fill="${c}" style="animation-delay:${i*60}ms"/>`; } });
+    el.innerHTML = `<svg viewBox="0 0 500 200">${dots}<circle cx="215" cy="100" r="62" fill="none" stroke="#1A2340" stroke-dasharray="5 6" class="ln" stroke-width="2"/><circle cx="215" cy="100" r="10" fill="#1A2340"/><text x="215" y="190" text-anchor="middle" font-size="12" fill="#5D6787">new example ● looks at its nearest neighbours and they vote</text></svg>`;
+  }
+}
+async function trainAll(silent){
+  const btn=$('#trainBtn'), bar=$('#trainBar'); btn.disabled=true; renderViz(true);
+  try{
+    await trainKind('v', p=>bar.style.width=(p*50)+'%');
+    await trainKind('s', p=>bar.style.width=(50+p*50)+'%');
+    if (!silent){ const v=Brain.v.acc, s=Brain.s.acc; toast(`AI trained! 🚗 ${v!=null?Math.round(v*100)+'%':'—'} · 🔊 ${s!=null?Math.round(s*100)+'%':'—'}`, 'ok'); }
+  } catch(e){ console.error(e); toast('Training failed: '+e.message, 'bad'); }
+  btn.disabled=false; setTimeout(()=>{ bar.style.width='0'; renderViz(false); }, 900); renderAI(); renderCounts();
+}
+
+/* =====================================================================
+   SETTINGS UI
+   ===================================================================== */
+const getP = (o,p) => p.split('.').reduce((a,k)=>a[k], o);
+const setP = (o,p,v) => { const ks=p.split('.'), last=ks.pop(); ks.reduce((a,k)=>a[k], o)[last]=v; };
+const fmt = {'timing.green':v=>v+' s','timing.yellow':v=>v+' s','timing.red':v=>v+' s','timing.maxPhase':v=>v+' s','sound.calib':v=>'+'+v,'sound.gate':v=>v+' dB','det.minScore':v=>v+'%','det.simThresh':v=>v+'%','det.maxBoxes':v=>v};
+function paintRange(r){ const p=(r.value-r.min)/(r.max-r.min)*100; r.style.setProperty('--p', p+'%'); }
+function renderSettings(){
+  $$('[data-set]').forEach(el=>{ const v=getP(S.settings, el.dataset.set); if (el.type==='checkbox') el.checked=!!v; else { el.value=v; paintRange(el); const val=el.parentElement.querySelector('.val'); if (val) val.textContent=(fmt[el.dataset.set]||String)(v); } });
+  renderCycle(); renderGateCards(); renderRules(); renderDataStats();
+}
+function renderCycle(){ const T=S.settings.timing; $('#cycle').innerHTML = `<div style="flex:${T.green};background:var(--green)">${T.green}s</div><div style="flex:${T.yellow};background:var(--sun)">${T.yellow}s</div><div style="flex:${T.red};background:var(--red)">${T.red}s</div>`; }
+function renderGateCards(){
+  $('#gcards').innerHTML = S.settings.servos.map((s,i)=>`<div class="gcard">
+    <h4><span>S${i+1}</span><input type="text" value="${esc(s.name)}" data-g="${i}" data-k="name" maxlength="16" style="flex:1;padding:6px 10px"></h4>
+    ${i===0 ? `<div class="badge ok" style="justify-content:center">Follows the signal (open on green)</div>` : `<select data-g="${i}" data-k="mode"><option value="reverse"${s.mode==='reverse'?' selected':''}>Opposite of gate 1</option><option value="main"${s.mode==='main'?' selected':''}>Same as gate 1</option></select>`}
+    <div class="horn"><div class="hub"></div><div class="h c" style="transform:rotate(${-s.close}deg)"></div><div class="h o" style="transform:rotate(${-s.open}deg)"></div></div>
+    <div class="lbl"><span style="color:var(--green-d)">Open angle</span><b>${s.open}°</b></div><input type="range" min="0" max="180" value="${s.open}" data-g="${i}" data-k="open" style="--c:var(--green)">
+    <div class="lbl"><span style="color:var(--red-d)">Closed angle</span><b>${s.close}°</b></div><input type="range" min="0" max="180" value="${s.close}" data-g="${i}" data-k="close" style="--c:var(--red)">
+    <div class="row"><button class="btn sm" style="flex:1" data-act="testO" data-i="${i}">Test open</button><button class="btn sm" style="flex:1" data-act="testC" data-i="${i}">Test close</button></div>
+  </div>`).join('');
+  $$('#gcards input[type=range]').forEach(paintRange);
+}
+function optList(arr, sel, any){ return (any?`<option value="any"${sel==='any'?' selected':''}>${any}</option>`:'') + arr.map(o=>`<option value="${o.id}"${o.id===sel?' selected':''}>${esc(o.name)}</option>`).join(''); }
+function ruleSentence(r){
+  const nm = (arr,id) => (arr.find(o=>o.id===id)||{}).name || '…';
+  const t = r.trigger==='cross' ? `a vehicle crosses <b>${r.line==='any'?'any line':esc(nm(S.lines,r.line))}</b>` : r.trigger==='loud' ? `a sound is louder than <b>${r.db} dB</b>` : r.trigger==='sound' ? `the AI hears <b>${esc(nm(S.sClasses,r.label))}</b>` : r.trigger==='vehicle' ? `the AI sees <b>${esc(nm(S.vClasses,r.label))}</b>` : `<b>${r.n} or more</b> vehicles are on screen`;
+  const a = r.action==='addRed' ? `add <b>${r.sec} seconds</b> to the red light (gate stays closed)` : r.action==='addGreen' ? `add <b>${r.sec} seconds</b> to the green light` : r.action==='goRed' ? `switch the light to <b>RED</b> right away` : `switch the light to <b>GREEN</b> right away`;
+  return `When ${t} while the light is <b>${WHEN[r.when]}</b>, ${a}.`;
+}
+function renderRules(){
+  const el=$('#rules');
+  if (!S.rules.length){ el.innerHTML = `<div class="emptyhint">No rules. The signal just loops green → yellow → red. Add a rule above!</div>`; return; }
+  el.innerHTML = S.rules.map(r=>{
+    let param='';
+    if (r.trigger==='cross') param = `<select data-r="${r.id}" data-k="line">${optList(S.lines, r.line, 'any line')}</select>`;
+    if (r.trigger==='loud') param = `<input type="number" min="30" max="130" value="${r.db}" data-r="${r.id}" data-k="db"> dB`;
+    if (r.trigger==='sound') param = S.sClasses.length ? `<select data-r="${r.id}" data-k="label"><option value="">choose…</option>${optList(S.sClasses, r.label)}</select>` : `<span class="tag" style="--c-s:var(--sun-s);--c-d:var(--sun-d)">train a sound first</span>`;
+    if (r.trigger==='vehicle') param = S.vClasses.length ? `<select data-r="${r.id}" data-k="label"><option value="">choose…</option>${optList(S.vClasses, r.label)}</select>` : `<span class="tag" style="--c-s:var(--sun-s);--c-d:var(--sun-d)">train a vehicle first</span>`;
+    if (r.trigger==='count') param = `<input type="number" min="1" max="10" value="${r.n||3}" data-r="${r.id}" data-k="n">`;
+    return `<div class="rule${r.on?'':' off'}">
+      <div class="rr"><span class="switch"><input type="checkbox" ${r.on?'checked':''} data-r="${r.id}" data-k="on"><span></span></span>
+        <span class="tag" style="--c-s:var(--blue-s);--c-d:var(--blue-d)">WHEN</span>
+        <select data-r="${r.id}" data-k="trigger">${Object.entries(TRIG).map(([k,v])=>`<option value="${k}"${k===r.trigger?' selected':''}>${v}</option>`).join('')}</select>${param}
+        <span>while light is</span><select data-r="${r.id}" data-k="when">${Object.entries(WHEN).map(([k,v])=>`<option value="${k}"${k===r.when?' selected':''}>${v}</option>`).join('')}</select>
+        <span class="tag" style="--c-s:var(--green-s);--c-d:var(--green-d)">THEN</span>
+        <select data-r="${r.id}" data-k="action">${Object.entries(ACT).map(([k,v])=>`<option value="${k}"${k===r.action?' selected':''}>${v}</option>`).join('')}</select>
+        ${r.action.startsWith('add')?`<input type="number" min="1" max="60" value="${r.sec}" data-r="${r.id}" data-k="sec"> s`:''}
+        <span class="grow"></span><span class="hint">wait</span><input type="number" min="1" max="60" value="${r.cool}" data-r="${r.id}" data-k="cool" title="Seconds before this rule can fire again"><span class="hint">s</span>
+        <button class="iconbtn" style="width:34px;height:34px;border-radius:10px" data-act="delRule" data-id="${r.id}" title="Delete rule">${icon('i-trash')}</button></div>
+      <div class="say">${ruleSentence(r)}</div></div>`; }).join('');
+}
+const PRESETS = {
+  jump:()=>({trigger:'cross', line:'any', when:'R', action:'addRed', sec:5, cool:3}),
+  honk:()=>({trigger:'loud', db:80, when:'R', action:'addRed', sec:3, cool:4}),
+  amb:()=>({trigger:'vehicle', label:(S.vClasses.find(c=>/amb|fire|police|emerg/i.test(c.name))||{}).id||'', when:'R', action:'goGreen', cool:10}),
+  busy:()=>({trigger:'count', n:3, when:'R', action:'goGreen', cool:15}),
+  blank:()=>({trigger:'cross', line:'any', when:'R', action:'addRed', sec:3, cool:3})
+};
+function renderDataStats(){ $('#dataStats').innerHTML = `Saved now: <b>${S.vClasses.length}</b> vehicles (${S.vSamples.length} photos) · <b>${S.sClasses.length}</b> sounds (${S.sSamples.length} clips) · <b>${S.lines.length}</b> road lines · <b>${S.rules.length}</b> rules.`; }
+
+document.addEventListener('input', e => {
+  const el=e.target;
+  if (el.dataset.set){ let v = el.type==='checkbox' ? el.checked : +el.value; setP(S.settings, el.dataset.set, v); if (el.type==='range'){ paintRange(el); const val=el.parentElement.querySelector('.val'); if (val) val.textContent=(fmt[el.dataset.set]||String)(v); } if (el.dataset.set.startsWith('timing')) renderCycle(); markUnsaved(); }
+  if (el.dataset.g!==undefined){ const s=S.settings.servos[+el.dataset.g], k=el.dataset.k; s[k] = el.type==='range' ? +el.value : el.value;
+    if (el.type==='range'){ paintRange(el); el.previousElementSibling.querySelector('b').textContent=el.value+'°'; const card=el.closest('.gcard'); card.querySelector('.h.o').style.transform=`rotate(${-s.open}deg)`; card.querySelector('.h.c').style.transform=`rotate(${-s.close}deg)`; }
+    markUnsaved(); }
+  if (el.dataset.r && el.type==='number'){ const r=S.rules.find(x=>x.id===el.dataset.r); if (r){ r[el.dataset.k]=+el.value; el.closest('.rule').querySelector('.say').innerHTML=ruleSentence(r); markUnsaved(); } }
+});
+document.addEventListener('change', e => {
+  const el=e.target;
+  if (el.dataset.g!==undefined && el.tagName==='SELECT'){ S.settings.servos[+el.dataset.g].mode = el.value; markUnsaved(); }
+  if (el.dataset.r && el.type!=='number'){ const r=S.rules.find(x=>x.id===el.dataset.r); if (!r) return; const k=el.dataset.k;
+    r[k] = el.type==='checkbox' ? el.checked : el.value;
+    if (k==='trigger'){ Object.assign(r, {line:r.line||'any', db:r.db||80, n:r.n||3, label:''}); }
+    if (k==='action' && r.action.startsWith('add') && !r.sec) r.sec=3;
+    renderRules(); markUnsaved(); }
+  if (el.id==='algoV' || el.id==='algoS'){ S.algo[el.id==='algoV'?'v':'s']=el.value; Brain[el.id==='algoV'?'v':'s'].stale=true; saveMeta(); renderAI(); renderCounts(); }
+});
+['kV','kS'].forEach(id => $('#'+id).addEventListener('input', e => { const k = id==='kV'?'kv':'ks'; S.algo[k]=+e.target.value; $('#'+id+'v').textContent=e.target.value; paintRange(e.target); saveMeta(); renderAI(); }));
+let saveT=null;
+function markUnsaved(){ clearTimeout(saveT); saveT=setTimeout(saveSettingsDB, 400); $('#setNote').innerHTML = '<b style="color:var(--peach-d)">● Saved in this browser</b> – press the button to send the changes to the Arduino.'; }
+
+/* =====================================================================
+   NAV / MODES / STEPS
+   ===================================================================== */
+/* ---------- landing <-> lab ---------- */
+function showApp(){ $('#landing').classList.add('hidden'); $('#appView').classList.remove('hidden'); try{localStorage.setItem('ss-view','lab');}catch(e){} window.scrollTo(0,0); requestAnimationFrame(movePill); renderSignal(false); }
+function showLanding(){ $('#appView').classList.add('hidden'); $('#landing').classList.remove('hidden'); try{localStorage.setItem('ss-view','home');}catch(e){} window.scrollTo(0,0); renderResume(); }
+function renderResume(){ const n=S.vSamples.length+S.sSamples.length+S.lines.length; $('#resumeBox').classList.toggle('hidden', !n); $('#resumeTxt').textContent = `${S.vSamples.length} photos · ${S.sSamples.length} sound clips · ${S.lines.length} line${S.lines.length===1?'':'s'}`; }
+function landingFx(){
+  const words=['Train with your own toys','Google MediaPipe tracking','KNN & Neural Networks','Arduino UNO R4 over Bluetooth','Horn-o-meter in decibels','Red-light jumper alerts','Write your own traffic rules','2 servo gates','4-digit countdown'];
+  $('#marq').innerHTML = [...words,...words].map(w=>`<span>${w}</span>`).join('');
+  $$('.yr').forEach(e=>e.textContent=new Date().getFullYear());
+  const L=[[4,'#3D6BFF'],[6,'#8B6CFF'],[3,'#22B573']], X=[60,250,440]; let ln='', nd='';
+  const pos=L.map(([n],li)=>Array.from({length:n},(_,i)=>({x:X[li],y:16+(i+.5)*(150/n)})));
+  for(let l=0;l<2;l++) pos[l].forEach((a,i)=>pos[l+1].forEach((b,j)=> ln+=`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${(i+j)%3===0?'#3D6BFF':'#DCE3F5'}" stroke-width="1.6" ${(i+j)%3===0?'stroke-dasharray="6 6" style="animation:dash 1s linear infinite"':''}/>`));
+  pos.forEach((col,li)=>col.forEach((p,i)=> nd+=`<circle cx="${p.x}" cy="${p.y}" r="11" fill="${L[li][1]}" style="transform-box:fill-box;transform-origin:center;animation:nod 2.4s ease-in-out ${(li*3+i)*.15}s infinite"/>`));
+  $('#heroNet').innerHTML=`<svg viewBox="0 0 500 186">${ln}${nd}<text x="60" y="182" text-anchor="middle" font-size="12" font-weight="700" fill="#626B89">1024 numbers</text><text x="250" y="182" text-anchor="middle" font-size="12" font-weight="700" fill="#626B89">hidden neurons</text><text x="440" y="182" text-anchor="middle" font-size="12" font-weight="700" fill="#626B89">Car / Bus / …</text></svg>`;
+  const io = 'IntersectionObserver' in window ? new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} }),{threshold:.12}) : null;
+  $$('.reveal').forEach((el,i)=>{ el.style.transitionDelay=(i%5)*70+'ms'; io ? io.observe(el) : el.classList.add('in'); });
+  const top=$('#lTop'); addEventListener('scroll',()=>top.classList.toggle('scrolled', scrollY>10), {passive:true});
+}
+
+function setMode(m){
+  S.mode=m;
+  $$('#modes button').forEach(b=>b.setAttribute('aria-selected', b.dataset.mode===m));
+  movePill(); $$('.view').forEach(v=>v.classList.toggle('on', v.id==='v-'+m));
+  (m==='live' ? $('#liveSlot') : $('#trainSlot')).append($('#stage'));
+  if (m==='live'){ closeFreeze(); tracks=[]; } trainDets=[];
+  renderHud(); renderSignal(false);
+  if (m==='live' && Brain.v.stale && S.vSamples.length && S.algo.v==='nn') toast('Tip: you added new data – train the AI again for best results.', 'warn');
+}
+function movePill(){ const b=$('#modes button[aria-selected="true"]'), p=$('#modes .pill'); p.style.width=b.offsetWidth+'px'; p.style.transform=`translateX(${b.offsetLeft-4}px)`; }
+function setStep(s){ S.step=s; $$('.steps button').forEach(b=>b.setAttribute('aria-selected', b.dataset.step===s)); $$('.step').forEach(x=>x.classList.toggle('on', x.id==='st-'+s)); if (s!=='line') closeFreeze(); if (s==='brain') renderAI(); }
+function renderCounts(){
+  const set=(id,n,show)=>{ const e=$(id); e.textContent=n; e.classList.toggle('show', show); };
+  set('#cnt-veh', S.vSamples.length, S.vSamples.length>0); set('#cnt-line', S.lines.length, S.lines.length>0); set('#cnt-snd', S.sSamples.length, S.sSamples.length>0);
+  set('#cnt-brain', '!', (Brain.v.stale && S.vSamples.length>0) || (Brain.s.stale && S.sSamples.length>0));
+  renderAI();
+}
+
+/* ripple */
+document.addEventListener('pointerdown', e => { const b=e.target.closest('.btn'); if (!b) return; const r=b.getBoundingClientRect(), s=Math.max(r.width,r.height), sp=document.createElement('span'); sp.className='rip'; sp.style.cssText=`width:${s}px;height:${s}px;left:${e.clientX-r.left-s/2}px;top:${e.clientY-r.top-s/2}px`; b.append(sp); setTimeout(()=>sp.remove(), 650); });
+
+/* =====================================================================
+   CLICK ACTIONS
+   ===================================================================== */
+function addClass(kind){
+  const inp = $(kind==='v'?'#vName':'#sName'), name = inp.value.trim();
+  if (!name){ inp.focus(); toast('Type a name first ✏️'); return; }
+  const list = classesOf(kind);
+  if (list.some(c=>c.name.toLowerCase()===name.toLowerCase())){ toast('That name already exists', 'warn'); return; }
+  list.push({id:uid(), name, color:COLORS[list.length % COLORS.length]}); inp.value=''; saveMeta();
+  kind==='v' ? renderV() : renderS(); renderCounts();
+}
+$('#vName').addEventListener('keydown', e=>e.key==='Enter'&&addClass('v'));
+$('#sName').addEventListener('keydown', e=>e.key==='Enter'&&addClass('s'));
+
+document.addEventListener('click', async e => {
+  const go = e.target.closest('[data-go]'); if (go){ go.dataset.go==='lab' ? showApp() : showLanding(); return; }
+  const mb = e.target.closest('#modes button'); if (mb) return setMode(mb.dataset.mode);
+  const sb = e.target.closest('.steps button'); if (sb) return setStep(sb.dataset.step);
+  const tb = e.target.closest('.stabs button'); if (tb){ $$('.stabs button').forEach(b=>b.setAttribute('aria-selected', b===tb)); $$('.spane').forEach(p=>p.classList.toggle('on', p.id==='sp-'+tb.dataset.st)); return; }
+  const rb = e.target.closest('[data-rec]'); if (rb) return recordSound(rb.dataset.rec, +rb.dataset.n);
+  const pr = e.target.closest('[data-preset]'); if (pr){ const r={id:uid(), on:true, ...PRESETS[pr.dataset.preset]()}; S.rules.push(r); renderRules(); markUnsaved(); toast('Rule added – check it and press Save'); return; }
+  if (e.target.closest('[data-close]')){ e.target.closest('.scrim').classList.remove('on'); return; }
+  if (e.target.classList.contains('scrim')){ e.target.classList.remove('on'); return; }
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const id = b.dataset.id;
+  switch (b.dataset.act){
+    case 'cam': Cam.on ? camStop() : camStart(); break;
+    case 'flip': camFlip(); break;
+    case 'mic': Mic.on ? micStop() : micStart(); break;
+    case 'addV': addClass('v'); break;
+    case 'addS': addClass('s'); break;
+    case 'delV': { const c=clsById('v',id); if (!confirm(`Delete “${c.name}” and all its photos?`)) return; S.vClasses=S.vClasses.filter(x=>x.id!==id); S.vSamples.filter(s=>s.cls===id).forEach(s=>DB.del('vehicles',s.id)); S.vSamples=S.vSamples.filter(s=>s.cls!==id); Brain.v.stale=true; saveMeta(); renderV(); renderCounts(); break; }
+    case 'delVS': S.vSamples=S.vSamples.filter(s=>s.id!==id); DB.del('vehicles', id); Brain.v.stale=true; renderV(); renderCounts(); break;
+    case 'delS': { const c=clsById('s',id); if (!confirm(`Delete “${c.name}” and all its clips?`)) return; S.sClasses=S.sClasses.filter(x=>x.id!==id); S.sSamples.filter(s=>s.cls===id).forEach(s=>DB.del('sounds',s.id)); S.sSamples=S.sSamples.filter(s=>s.cls!==id); Brain.s.stale=true; saveMeta(); renderS(); renderCounts(); break; }
+    case 'undoS': { const last=[...S.sSamples].reverse().find(s=>s.cls===id); if (last){ S.sSamples=S.sSamples.filter(s=>s!==last); DB.del('sounds', last.id); Brain.s.stale=true; renderS(); renderCounts(); } break; }
+    case 'snapRoad': if (!Cam.on){ toast('Turn the camera on first, or upload a road photo 📷'); return; } openFreeze(c=>c.drawImage(video,0,0,VW(),VH()), VW(), VH()); break;
+    case 'clearPts': if (LineEd.active){ LineEd.pts=[]; drawFreeze(); } break;
+    case 'cancelLine': closeFreeze(); break;
+    case 'saveLine': saveLine(); break;
+    case 'delLine': S.lines=S.lines.filter(l=>l.id!==id); DB.del('lines', id); S.rules.forEach(r=>{ if (r.line===id) r.line='any'; }); renderLines(); renderCounts(); break;
+    case 'train': trainAll(false); break;
+    case 'goR': send('GO,R'); logEv('👆 You switched the light to RED', 'var(--red)'); break;
+    case 'goG': send('GO,G'); logEv('👆 You switched the light to GREEN', 'var(--green)'); break;
+    case 'pause': send(Sig.paused?'RUN,1':'RUN,0'); break;
+    case 'add5': send('ADD,R,5'); if (Sig.state==='R'){ setStat('add', Stats.add+5); logEv('👆 You added 5 s to RED', 'var(--sun)'); } else toast('+5 s works only while the light is red'); break;
+    case 'resetStats': ['now','cross','viol','honk','add'].forEach(k=>setStat(k,0)); break;
+    case 'clearLog': $('#log').innerHTML=''; break;
+    case 'openRules': openSettings('rules'); break;
+    case 'testO': case 'testC': { const i=+b.dataset.i, s=S.settings.servos[i], a = b.dataset.act==='testO'?s.open:s.close; send(`TST,${i},${a}`); toast(BLE.connected?`Servo ${i+1} → ${a}°`:`Connect the Arduino to test servo ${i+1} (${a}°)`, BLE.connected?'ok':'warn'); break; }
+    case 'saveSettings': saveSettingsDB(); pushConfig(true); $('#setNote').textContent = BLE.connected ? '✔ Saved and sent to the Arduino.' : '✔ Saved. Connect the Arduino to send these settings.'; toast(BLE.connected?'Settings sent to the Arduino ✔':'Settings saved ✔', 'ok'); renderGates(true); drawMic(); break;
+    case 'delRule': S.rules=S.rules.filter(r=>r.id!==id); renderRules(); markUnsaved(); break;
+    case 'export': exportData(); break;
+  }
+});
+
+function openSettings(tab){ renderSettings(); $('#setNote').textContent='Changes are sent to the Arduino when you press Save.'; if (tab) $(`.stabs button[data-st="${tab}"]`).click(); $('#setScrim').classList.add('on'); }
+$('#setBtn').addEventListener('click', ()=>openSettings());
+$('#bleBtn').addEventListener('click', ()=> BLE.connected ? (confirm('Disconnect the Arduino?') && BLE.disconnect()) : BLE.connect());
+$('#forgetBtn').addEventListener('click', ()=>$('#cfScrim').classList.add('on'));
+$('#forgetBtn2').addEventListener('click', ()=>$('#cfScrim').classList.add('on'));
+$('#footSet').addEventListener('click', ()=>openSettings());
+$('#cfYes').addEventListener('click', async ()=>{
+  await DB.clearAll(); try{ localStorage.removeItem('signalsense'); }catch(e){}
+  Object.assign(S, {vClasses:[], vSamples:[], sClasses:[], sSamples:[], lines:[], settings:defaultSettings(), rules:defaultRules(), algo:{v:'nn',s:'nn',kv:3,ks:3}});
+  Object.values(Brain).forEach(B=>Object.assign(B,{mlp:null,classes:[],acc:null,trained:false,stale:true}));
+  $$('.scrim').forEach(s=>s.classList.remove('on')); syncAlgoInputs(); renderAll(); renderResume(); pushConfig(false);
+  toast('All data forgotten. Fresh start! ✨', 'ok');
+});
+document.addEventListener('keydown', e => { if (e.key==='Escape') $$('.scrim.on').forEach(s=>s.classList.remove('on')); });
+
+/* export / import */
+function exportData(){
+  const plain = s => ({...s, vec:Array.from(s.vec, x=>+x.toFixed(5))});
+  const data = {app:'SignalSense', version:1, date:new Date().toISOString(), vClasses:S.vClasses, sClasses:S.sClasses, vSamples:S.vSamples.map(plain), sSamples:S.sSamples.map(plain), lines:S.lines, settings:S.settings, rules:S.rules.map(({_last,...r})=>r), algo:S.algo};
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(data)],{type:'application/json'})); a.download=`signalsense-backup-${new Date().toISOString().slice(0,10)}.json`; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+}
+$('#importFile').addEventListener('change', async e => {
+  const f=e.target.files[0]; e.target.value=''; if (!f) return;
+  try{
+    const d = JSON.parse(await f.text()); if (d.app!=='SignalSense') throw new Error('not a SignalSense backup');
+    await DB.clearAll();
+    const fix = s => ({...s, vec:Float32Array.from(s.vec)});
+    Object.assign(S, {vClasses:d.vClasses||[], sClasses:d.sClasses||[], vSamples:(d.vSamples||[]).map(fix), sSamples:(d.sSamples||[]).map(fix), lines:d.lines||[], settings:deepMerge(defaultSettings(), d.settings||{}), rules:d.rules||[], algo:{...S.algo, ...(d.algo||{})}});
+    for (const s of S.vSamples) await DB.put('vehicles', s); for (const s of S.sSamples) await DB.put('sounds', s); for (const l of S.lines) await DB.put('lines', l);
+    saveMeta(); saveSettingsDB(); syncAlgoInputs(); renderAll(); renderSettings(); await trainAll(true); pushConfig(false);
+    toast('Backup loaded ✔', 'ok');
+  } catch(err){ toast('Could not load backup: '+err.message, 'bad'); }
+});
+
+function syncAlgoInputs(){ $('#algoV').value=S.algo.v; $('#algoS').value=S.algo.s; $('#kV').value=S.algo.kv; $('#kS').value=S.algo.ks; $('#kVv').textContent=S.algo.kv; $('#kSv').textContent=S.algo.ks; paintRange($('#kV')); paintRange($('#kS')); }
+function renderAll(){ renderV(); renderS(); renderLines(); renderCounts(); renderGates(); renderSignal(false); }
+
+/* =====================================================================
+   START
+   ===================================================================== */
+(async function init(){
+  $('#trainSlot').append($('#stage'));
+  landingFx();
+  window.addEventListener('resize', movePill); window.addEventListener('blur', stopHold); document.fonts?.ready.then(movePill);
+  await loadAll();
+  syncAlgoInputs(); renderAll(); renderResume();
+  let view='home'; try{ view=localStorage.getItem('ss-view')||'home'; }catch(e){}
+  if (view==='lab' || location.hash==='#lab') showApp();
+  Sim.begin();
+  if (S.vSamples.length || S.sSamples.length) trainAll(true);
+  logEv('👋 SignalSense started. Signal runs in the simulator until you connect the Arduino.', 'var(--teal)');
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

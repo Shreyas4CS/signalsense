@@ -410,6 +410,27 @@ main.d-main{max-width:1500px;margin:0 auto;padding:26px 24px 30px}
 .dbbig small{font:700 13px var(--fb);color:var(--muted);margin-left:4px}
 .micbox{border-radius:20px;padding:16px;margin-bottom:16px;background:linear-gradient(145deg,var(--lilac-s),#fff);border:2px solid var(--line)}
 
+/* photo tray (captured, not labelled yet) */
+.tray{border:2px dashed #FFC2AE;background:linear-gradient(145deg,#FFF5F1,#fff);border-radius:20px;padding:14px;margin-bottom:16px;animation:pop .35s var(--spring) both}
+.tray:empty{display:none}
+.tray-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.tray-h b{font:700 18px var(--fd)}
+.tray-h .cnt{font-size:12px;font-weight:800;background:var(--peach);color:#fff;padding:2px 9px;border-radius:99px}
+.tray-grid{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.tp{position:relative;width:92px;aspect-ratio:4/3;border-radius:12px;overflow:hidden;border:3px solid transparent;cursor:pointer;transition:transform .2s var(--spring),border-color .2s;animation:thpop .4s var(--spring) both;background:var(--bg2)}
+.tp img{width:100%;height:100%;object-fit:cover;display:block;opacity:.55;transition:opacity .2s}
+.tp.sel{border-color:var(--peach)}
+.tp.sel img{opacity:1}
+.tp:hover{transform:translateY(-2px)}
+.tp i{position:absolute;top:5px;right:5px;width:20px;height:20px;border-radius:50%;background:#fff;border:2px solid #D3DAEA;display:grid;place-items:center;font-style:normal}
+.tp.sel i{background:var(--peach);border-color:var(--peach);color:#fff}
+.tp i svg{width:12px;height:12px}
+.labelrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.labelrow .lb{display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:999px;font-weight:800;font-size:14px;background:#fff;border:2px solid var(--c);color:var(--ink);transition:transform .2s var(--spring),background .2s}
+.labelrow .lb::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--c)}
+.labelrow .lb:hover{background:var(--c);color:#fff;transform:translateY(-2px)}
+.labelrow .lb:hover::before{background:#fff}
+
 /* train step */
 .algos{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
 .algo{border-radius:20px;padding:16px;background:linear-gradient(145deg,var(--c-s),#fff);border:2px solid var(--line);position:relative;overflow:hidden}
@@ -698,7 +719,7 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
     <div class="wrap">
       <div class="sec-head reveal"><span class="eyebrow">How the project works</span><h2>Four training steps, then go live</h2><p>Collect examples, label them, train the AI, and watch your smart signal make decisions on its own.</p></div>
       <div class="cycle">
-        <div class="cstep reveal"><div class="ic" style="background:var(--peach-s);color:var(--peach-d)"><svg><use href="#i-car"/></svg></div><div class="n">STEP 1</div><h3>Vehicles</h3><p>Name each type of vehicle and snap photos of your toys from every side.</p></div>
+        <div class="cstep reveal"><div class="ic" style="background:var(--peach-s);color:var(--peach-d)"><svg><use href="#i-car"/></svg></div><div class="n">STEP 1</div><h3>Vehicles</h3><p>Capture photos of your toys, then label each one with its vehicle type.</p></div>
         <div class="cstep reveal"><div class="ic" style="background:var(--blue-s);color:var(--blue-d)"><svg><use href="#i-road"/></svg></div><div class="n">STEP 2</div><h3>Road line</h3><p>Take a photo of the road and tap two points to mark the stop line.</p></div>
         <div class="cstep reveal"><div class="ic" style="background:var(--lilac-s);color:var(--lilac-d)"><svg><use href="#i-wave"/></svg></div><div class="n">STEP 3</div><h3>Sounds</h3><p>Record short clips of horns, sirens and plain background noise.</p></div>
         <div class="cstep reveal"><div class="ic" style="background:var(--teal-s);color:var(--teal-d)"><svg><use href="#i-brain"/></svg></div><div class="n">STEP 4</div><h3>Train the AI</h3><p>Pick KNN or a Neural Network, train it, and check its accuracy.</p></div>
@@ -825,7 +846,7 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
           <div class="camctl">
             <button class="btn pri" data-act="cam"><svg><use href="#i-cam"/></svg><span>Turn camera on</span></button>
             <button class="btn" data-act="flip"><svg><use href="#i-flip"/></svg>Switch camera</button>
-            <label class="row" style="margin-left:auto;font-size:14px;font-weight:700;gap:8px"><span class="switch"><input type="checkbox" id="autoCrop" checked><span></span></span>Auto-box the vehicle</label>
+            <button class="btn peach" data-act="capture" style="margin-left:auto" title="Shortcut: Space bar"><svg><use href="#i-snap"/></svg>Capture photo</button>
           </div>
         </div>
         <div class="card algo-mini" style="--i:1">
@@ -844,9 +865,10 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
 
         <div class="step on" id="st-veh">
           <h3>Step 1 · Teach the AI your vehicles</h3>
-          <p class="hint">Make one group per <b>type</b> of vehicle (Car, Bus, Ambulance…). Hold the camera button to snap lots of photos.</p>
-          <div class="howto">💡<div><b>Make it work on new toys:</b> put 3–4 <b>different</b> toys in each group and turn them around, closer and farther. 15–30 photos per group is great. Keep <b>Auto-box</b> on so MediaPipe crops just the vehicle.</div></div>
+          <p class="hint">Make one group per <b>type</b> of vehicle (Car, Bus, Ambulance…). Then capture photos and label them.</p>
+          <div class="howto">📸<div><b>1.</b> Press <b>Capture photo</b> (or the Space bar) – photos wait in the tray below. <b>2.</b> Tick the photos and press a group name to <b>label</b> them. Only labelled photos are saved and used for training.<br><b>Tip:</b> hold the toy close so it fills most of the photo, use 3–4 <b>different</b> toys per group, from all sides.</div></div>
           <div class="addrow"><input type="text" id="vName" placeholder="Vehicle type, e.g. Car, Bus, Ambulance" maxlength="24"><button class="btn peach" data-act="addV"><svg><use href="#i-plus"/></svg>Add group</button></div>
+          <div class="tray" id="tray"></div>
           <div class="clslist" id="vList"></div>
         </div>
 
@@ -1126,6 +1148,7 @@ const S = {
   settings:defaultSettings(),
   rules:defaultRules(),
   algo:{v:'nn', s:'nn', kv:3, ks:3},
+  pending:[],                 // captured photos waiting for a label {id,img,sel}
   mode:'train', step:'veh'
 };
 function deepMerge(base, add){
@@ -1162,6 +1185,7 @@ async function loadAll(){
     if (o.k==='settings') S.settings = deepMerge(defaultSettings(), o.v);
     if (o.k==='rules' && Array.isArray(o.v)) S.rules = o.v;
     if (o.k==='algo') S.algo = {...S.algo, ...o.v};
+    if (o.k==='pending' && Array.isArray(o.v)) S.pending = o.v;
   }
 }
 
@@ -1279,7 +1303,7 @@ function loadMP(){
     MP.det = await make(vision.ObjectDetector, {baseOptions:{modelAssetPath:DET_MODEL}, runningMode:'VIDEO', scoreThreshold:.05, maxResults:12});
     MP.emb = await make(vision.ImageEmbedder,  {baseOptions:{modelAssetPath:EMB_MODEL}, runningMode:'IMAGE', l2Normalize:true, quantize:false});
     MP.ready = true; setMpBadge('ready'); return true;
-  })().catch(e => { console.error(e); MP.loading=null; setMpBadge('fail'); toast('Could not load Google MediaPipe. Check the internet connection and try again.', 'bad'); return false; });
+  })().catch(e => { console.error(e); MP.loading=null; setMpBadge('fail'); if (Date.now()-(MP.failT||0)>15000){ MP.failT=Date.now(); toast('Could not load Google MediaPipe. Check the internet connection and try again.', 'bad'); } return false; });
   return MP.loading;
 }
 
@@ -1342,9 +1366,7 @@ async function captureVehicle(clsId, src){
     if (src===video && !Cam.on){ toast('Turn the camera on first 📷'); return; }
     if (!await loadMP()) return;
     const W = src.videoWidth||src.naturalWidth||src.width, H = src.videoHeight||src.naturalHeight||src.height;
-    let box = {x:0,y:0,w:W,h:H}, pad=0;
-    if ($('#autoCrop').checked){ const d = detect(src).sort((a,b)=>b.w*b.h-a.w*a.h)[0]; if (d){ box=d; pad=.12; } }
-    const c = cropTo(src, box, pad), vec = embedCanvas(c), thumb = thumbOf(c);
+    const c = cropTo(src, {x:0,y:0,w:W,h:H}, 0), vec = embedCanvas(c), thumb = thumbOf(c);
     const s = {id:uid(), cls:clsId, vec, thumb};
     S.vSamples.push(s); DB.put('vehicles', s); Brain.v.stale = true;
     if (src===video){ const f=$('#flash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go'); }
@@ -1352,6 +1374,41 @@ async function captureVehicle(clsId, src){
   } catch(e){ console.error(e); toast('Could not capture: '+e.message, 'bad'); }
   finally{ capBusy=false; }
 }
+/* ---- photo tray: capture now, label later (nothing is detected automatically in training) ---- */
+const snapC = document.createElement('canvas');
+function capturePhoto(){
+  if (!Cam.on){ toast('Turn the camera on first 📷'); return; }
+  if (S.step!=='veh') setStep('veh');
+  const W=VW(), H=VH(), w=Math.min(480,W), h=Math.round(w*H/W);
+  snapC.width=w; snapC.height=h; snapC.getContext('2d').drawImage(video,0,0,w,h);
+  S.pending.push({id:uid(), img:snapC.toDataURL('image/jpeg',.85), sel:true});
+  const f=$('#flash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go');
+  savePending(); renderTray();
+}
+const savePending = () => DB.kv('pending', S.pending);
+function renderTray(){
+  const el=$('#tray'); if (!S.pending.length){ el.innerHTML=''; return; }
+  const nSel = S.pending.filter(p=>p.sel).length;
+  el.innerHTML = `<div class="tray-h"><b>New photos</b><span class="cnt">${S.pending.length}</span><span class="hint">not labelled yet – tap a photo to tick or untick it</span><span class="grow"></span>
+      <button class="btn sm" data-act="trayAll">${nSel===S.pending.length?'Untick all':'Tick all'}</button><button class="btn sm danger" data-act="trayDel"${nSel?'':' disabled'}>${icon('i-trash')}Delete ticked</button></div>
+    <div class="tray-grid">${S.pending.map(p=>`<div class="tp${p.sel?' sel':''}" data-tp="${p.id}"><img src="${p.img}" alt=""><i>${p.sel?icon('i-check'):''}</i></div>`).join('')}</div>
+    <div class="labelrow">${S.vClasses.length ? `<span class="hint" style="font-weight:700">Label ${nSel} ticked photo${nSel===1?'':'s'} as:</span>` + S.vClasses.map(c=>`<button class="lb" style="--c:${c.color}" data-label="${c.id}"${nSel?'':' disabled'}>${esc(c.name)}</button>`).join('') : `<span class="hint">👇 Add a vehicle group below first, then label these photos.</span>`}</div>`;
+}
+async function labelPending(clsId){
+  const picks = S.pending.filter(p=>p.sel); if (!picks.length){ toast('Tick at least one photo'); return; }
+  const c = clsById('v', clsId);
+  if (!await loadMP()) return;
+  for (const p of picks){
+    const img = await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=p.img; });
+    const cv = cropTo(img, {x:0,y:0,w:img.naturalWidth,h:img.naturalHeight}, 0);
+    const s = {id:uid(), cls:clsId, vec:embedCanvas(cv), thumb:thumbOf(cv)};
+    S.vSamples.push(s); DB.put('vehicles', s);
+  }
+  S.pending = S.pending.filter(p=>!p.sel); Brain.v.stale=true;
+  savePending(); renderTray(); renderV(); renderCounts();
+  toast(`${picks.length} photo${picks.length>1?'s':''} labelled as “${esc(c.name)}” ✔`, 'ok');
+}
+
 function renderV(){
   const el = $('#vList');
   if (!S.vClasses.length){ el.innerHTML = `<div class="emptyhint">No vehicles yet. Type a name above and press <b>Add vehicle</b> 🚗</div>`; return; }
@@ -1360,9 +1417,8 @@ function renderV(){
     return `<div class="cls" style="--c:${c.color}">
       <div class="cls-h"><span class="dot"></span><b>${esc(c.name)}</b><span class="cnt">${ss.length} photo${ss.length===1?'':'s'}</span>
         <button class="x" data-act="delV" data-id="${c.id}" title="Delete this vehicle">${icon('i-trash')}</button></div>
-      <div class="thumbs">${shown.map(s=>`<div class="th"><img src="${s.thumb}" alt=""><button data-act="delVS" data-id="${s.id}" title="Remove photo">${icon('i-x')}</button></div>`).join('')}${ss.length>11?`<div class="th more">+${ss.length-11}</div>`:''}${!ss.length?'<em>No photos yet – hold the camera button</em>':''}</div>
-      <div class="cls-a"><button class="btn sm peach" data-cap="${c.id}">${icon('i-cam')}Hold to capture</button>
-        <label class="btn sm">${icon('i-up')}Upload photos<input type="file" accept="image/*" multiple hidden data-up="${c.id}"></label></div>
+      <div class="thumbs">${shown.map(s=>`<div class="th"><img src="${s.thumb}" alt=""><button data-act="delVS" data-id="${s.id}" title="Remove photo">${icon('i-x')}</button></div>`).join('')}${ss.length>11?`<div class="th more">+${ss.length-11}</div>`:''}${!ss.length?'<em>No photos yet – capture photos and label them “'+esc(c.name)+'”</em>':''}</div>
+      <div class="cls-a"><label class="btn sm">${icon('i-up')}Upload photos<input type="file" accept="image/*" multiple hidden data-up="${c.id}"></label></div>
     </div>`; }).join('');
 }
 
@@ -1729,18 +1785,15 @@ function drawOverlay(t){
       const label = c ? `${c.name} ${Math.round(tr.conf*100)}% · #${tr.id}` : `${base}${S.vSamples.length?' (not trained)':''} · #${tr.id}`;
       drawBox(octx, tr, c ? c.color : '#3D6BFF', label, sc, alert);
     }
-  } else if (S.step==='veh' && $('#autoCrop').checked && trainDets.length){
-    const d = [...trainDets].sort((a,b)=>b.w*b.h-a.w*a.h)[0];
-    drawBox(octx, d, '#FF7A59', `Auto-box: ${d.cat} ${Math.round(d.score*100)}%`, sc);
   }
 }
 function loop(t){
   requestAnimationFrame(loop);
-  if (Cam.on && MP.ready && video.readyState>=2 && t-lastDetT>70){
+  if (S.mode==='live' && Cam.on && MP.ready && video.readyState>=2 && t-lastDetT>70){   // detection runs only in Live mode
     lastDetT=t;
     try{
       const dets = detect(video);
-      if (S.mode==='live') updateTracks(dets, t); else trainDets = dets;
+      updateTracks(dets, t);
     } catch(e){ console.warn(e); }
   }
   drawOverlay(t);
@@ -1942,7 +1995,7 @@ function addClass(kind){
   const list = classesOf(kind);
   if (list.some(c=>c.name.toLowerCase()===name.toLowerCase())){ toast('That name already exists', 'warn'); return; }
   list.push({id:uid(), name, color:COLORS[list.length % COLORS.length]}); inp.value=''; saveMeta();
-  kind==='v' ? renderV() : renderS(); renderCounts();
+  kind==='v' ? (renderV(), renderTray()) : renderS(); renderCounts();
 }
 $('#vName').addEventListener('keydown', e=>e.key==='Enter'&&addClass('v'));
 $('#sName').addEventListener('keydown', e=>e.key==='Enter'&&addClass('s'));
@@ -1952,6 +2005,8 @@ document.addEventListener('click', async e => {
   const mb = e.target.closest('#modes button'); if (mb) return setMode(mb.dataset.mode);
   const sb = e.target.closest('.steps button'); if (sb) return setStep(sb.dataset.step);
   const tb = e.target.closest('.stabs button'); if (tb){ $$('.stabs button').forEach(b=>b.setAttribute('aria-selected', b===tb)); $$('.spane').forEach(p=>p.classList.toggle('on', p.id==='sp-'+tb.dataset.st)); return; }
+  const tp = e.target.closest('[data-tp]'); if (tp){ const p=S.pending.find(x=>x.id===tp.dataset.tp); if (p){ p.sel=!p.sel; savePending(); renderTray(); } return; }
+  const lb = e.target.closest('[data-label]'); if (lb) return labelPending(lb.dataset.label);
   const rb = e.target.closest('[data-rec]'); if (rb) return recordSound(rb.dataset.rec, +rb.dataset.n);
   const pr = e.target.closest('[data-preset]'); if (pr){ const r={id:uid(), on:true, ...PRESETS[pr.dataset.preset]()}; S.rules.push(r); renderRules(); markUnsaved(); toast('Rule added – check it and press Save'); return; }
   if (e.target.closest('[data-close]')){ e.target.closest('.scrim').classList.remove('on'); return; }
@@ -1965,6 +2020,9 @@ document.addEventListener('click', async e => {
     case 'addV': addClass('v'); break;
     case 'addS': addClass('s'); break;
     case 'delV': { const c=clsById('v',id); if (!confirm(`Delete “${c.name}” and all its photos?`)) return; S.vClasses=S.vClasses.filter(x=>x.id!==id); S.vSamples.filter(s=>s.cls===id).forEach(s=>DB.del('vehicles',s.id)); S.vSamples=S.vSamples.filter(s=>s.cls!==id); Brain.v.stale=true; saveMeta(); renderV(); renderCounts(); break; }
+    case 'capture': capturePhoto(); break;
+    case 'trayAll': { const all = S.pending.every(p=>p.sel); S.pending.forEach(p=>p.sel=!all); savePending(); renderTray(); break; }
+    case 'trayDel': S.pending = S.pending.filter(p=>!p.sel); savePending(); renderTray(); break;
     case 'delVS': S.vSamples=S.vSamples.filter(s=>s.id!==id); DB.del('vehicles', id); Brain.v.stale=true; renderV(); renderCounts(); break;
     case 'delS': { const c=clsById('s',id); if (!confirm(`Delete “${c.name}” and all its clips?`)) return; S.sClasses=S.sClasses.filter(x=>x.id!==id); S.sSamples.filter(s=>s.cls===id).forEach(s=>DB.del('sounds',s.id)); S.sSamples=S.sSamples.filter(s=>s.cls!==id); Brain.s.stale=true; saveMeta(); renderS(); renderCounts(); break; }
     case 'undoS': { const last=[...S.sSamples].reverse().find(s=>s.cls===id); if (last){ S.sSamples=S.sSamples.filter(s=>s!==last); DB.del('sounds', last.id); Brain.s.stale=true; renderS(); renderCounts(); } break; }
@@ -1996,10 +2054,13 @@ $('#forgetBtn2').addEventListener('click', ()=>$('#cfScrim').classList.add('on')
 $('#footSet').addEventListener('click', ()=>openSettings());
 $('#cfYes').addEventListener('click', async ()=>{
   await DB.clearAll(); try{ localStorage.removeItem('signalsense'); }catch(e){}
-  Object.assign(S, {vClasses:[], vSamples:[], sClasses:[], sSamples:[], lines:[], settings:defaultSettings(), rules:defaultRules(), algo:{v:'nn',s:'nn',kv:3,ks:3}});
+  Object.assign(S, {pending:[], vClasses:[], vSamples:[], sClasses:[], sSamples:[], lines:[], settings:defaultSettings(), rules:defaultRules(), algo:{v:'nn',s:'nn',kv:3,ks:3}});
   Object.values(Brain).forEach(B=>Object.assign(B,{mlp:null,classes:[],acc:null,trained:false,stale:true}));
   $$('.scrim').forEach(s=>s.classList.remove('on')); syncAlgoInputs(); renderAll(); renderResume(); pushConfig(false);
   toast('All data forgotten. Fresh start! ✨', 'ok');
+});
+document.addEventListener('keydown', e => {
+  if (e.code==='Space' && S.mode==='train' && !$('#appView').classList.contains('hidden') && !/INPUT|SELECT|TEXTAREA|BUTTON/.test(document.activeElement.tagName) && !$('.scrim.on')){ e.preventDefault(); capturePhoto(); }
 });
 document.addEventListener('keydown', e => { if (e.key==='Escape') $$('.scrim.on').forEach(s=>s.classList.remove('on')); });
 
@@ -2023,7 +2084,7 @@ $('#importFile').addEventListener('change', async e => {
 });
 
 function syncAlgoInputs(){ $('#algoV').value=S.algo.v; $('#algoS').value=S.algo.s; $('#kV').value=S.algo.kv; $('#kS').value=S.algo.ks; $('#kVv').textContent=S.algo.kv; $('#kSv').textContent=S.algo.ks; paintRange($('#kV')); paintRange($('#kS')); }
-function renderAll(){ renderV(); renderS(); renderLines(); renderCounts(); renderGates(); renderSignal(false); }
+function renderAll(){ renderTray(); renderV(); renderS(); renderLines(); renderCounts(); renderGates(); renderSignal(false); }
 
 /* =====================================================================
    START
