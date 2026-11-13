@@ -357,7 +357,7 @@ main.d-main{max-width:1500px;margin:0 auto;padding:26px 24px 30px}
 /* steps */
 .steps{display:flex;gap:4px;background:var(--bg2);border-radius:999px;padding:5px;margin-bottom:18px;overflow-x:auto;scrollbar-width:none}
 .steps::-webkit-scrollbar{display:none}
-.steps button{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:7px 12px 7px 7px;border-radius:999px;font-weight:700;font-size:13.5px;color:var(--muted);transition:.25s;white-space:nowrap;position:relative}
+.steps button{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:6px 9px 6px 6px;border-radius:999px;font-weight:700;font-size:13px;color:var(--muted);transition:.25s;white-space:nowrap;position:relative}
 .steps button .n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#fff;color:var(--c);transition:.25s;flex:none}
 .steps button .n svg{width:15px;height:15px}
 .steps button:hover{color:var(--ink)}
@@ -899,6 +899,7 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
           <button data-step="veh" aria-selected="true" style="--c:var(--peach)"><span class="n"><svg><use href="#i-car"/></svg></span>Vehicles<span class="cnt" id="cnt-veh">0</span></button>
           <button data-step="line" aria-selected="false" style="--c:var(--blue)"><span class="n"><svg><use href="#i-road"/></svg></span>Road line<span class="cnt" id="cnt-line">0</span></button>
           <button data-step="snd" aria-selected="false" style="--c:var(--lilac)"><span class="n"><svg><use href="#i-wave"/></svg></span>Sounds<span class="cnt" id="cnt-snd">0</span></button>
+          <button data-step="jump" aria-selected="false" style="--c:var(--red)"><span class="n"><svg><use href="#i-signal"/></svg></span>Line jump<span class="cnt" id="cnt-jump">0</span></button>
           <button data-step="brain" aria-selected="false" style="--c:var(--teal)"><span class="n"><svg><use href="#i-brain"/></svg></span>Train AI<span class="cnt" id="cnt-brain">!</span></button>
         </nav>
 
@@ -945,8 +946,16 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
           <div class="clslist" id="sList"></div>
         </div>
 
+        <div class="step" id="st-jump">
+          <h3>Step 4 · Teach the AI what a red-light jump looks like</h3>
+          <p class="hint">The AI looks only at the strip of road around your stop line (the dashed box on the camera). Show it each situation and press that button.</p>
+          <div class="howto">🚦<div><b>1.</b> Put a car <b>behind</b> the line → press <b>Waiting behind the line</b>. <b>2.</b> Push it <b>over</b> the line → press <b>Crossed the line</b>. <b>3.</b> Take all cars away → press <b>Road empty</b>.<br><b>Tip:</b> 15–25 photos each. Use different cars, different spots along the line, and both a little and a lot over the line. Hold a button to snap several.</div></div>
+          <div class="clslist" id="jList"></div>
+          <label class="row" style="margin-top:14px;font-weight:700;font-size:14px"><span class="switch"><input type="checkbox" data-set="det.useJudge"><span></span></span>Use this Line-jump AI in Live mode</label>
+        </div>
+
         <div class="step" id="st-brain">
-          <h3>Step 4 · Train the AI brain</h3>
+          <h3>Step 5 · Train the AI brain</h3>
           <p class="hint">Pick how the machine learns, press Train, then compare the two ways.</p>
           <div class="algos">
             <div class="algo" style="--c:var(--peach);--c-s:var(--peach-s);--c-d:var(--peach-d)">
@@ -960,6 +969,12 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
               <select id="algoS"><option value="nn">Neural Network (recommended)</option><option value="knn">K-Nearest Neighbours (KNN)</option></select>
               <div class="k" id="kSwrap">k =<input type="range" id="kS" min="1" max="9" step="2" value="3" style="--c:var(--lilac)"><b id="kSv">3</b></div>
               <div class="row"><span class="acc" id="accS">—</span><span class="hint" id="accSt">not trained</span></div>
+            </div>
+            <div class="algo" style="--c:var(--red);--c-s:var(--red-s);--c-d:var(--red-d)">
+              <h4><svg><use href="#i-signal"/></svg>Line-jump brain</h4>
+              <select id="algoJ"><option value="nn">Neural Network (recommended)</option><option value="knn">K-Nearest Neighbours (KNN)</option></select>
+              <div class="k" id="kJwrap">k =<input type="range" id="kJ" min="1" max="9" step="2" value="3" style="--c:var(--red)"><b id="kJv">3</b></div>
+              <div class="row"><span class="acc" id="accJ">—</span><span class="hint" id="accJt">not trained</span></div>
             </div>
           </div>
           <div class="row"><button class="btn pri lg" data-act="train" id="trainBtn"><svg><use href="#i-brain"/></svg>Train AI now</button><span class="hint" id="dataSum"></span></div>
@@ -1098,6 +1113,7 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
           <div class="field" style="--c:var(--blue)"><label><i></i>Match strictness</label><input type="range" min="20" max="95" data-set="det.simThresh" style="--c:var(--blue)"><span class="val"></span></div>
           <p class="hint">Higher = the AI only names a vehicle when it is very sure; otherwise it shows “not trained”. Lower it if your new toys are not being named.</p>
           <div class="field" style="--c:var(--blue)"><label><i></i>Max vehicles tracked</label><input type="range" min="1" max="10" data-set="det.maxBoxes" style="--c:var(--blue)"><span class="val"></span></div>
+          <div class="field" style="grid-template-columns:1fr auto"><label style="font-size:15px">Spot red-light jumps with</label><select data-set="det.jumpMode" style="width:auto"><option value="both">Trained Line-jump AI + tracking</option><option value="judge">Trained Line-jump AI only</option><option value="track">Tracking only</option></select></div>
           <div class="field" style="grid-template-columns:1fr auto"><label style="font-size:15px">Also find vehicles by comparing with the empty road (finds toys on the tape)</label><span class="switch"><input type="checkbox" data-set="det.motion"><span></span></span></div>
           <div class="field" style="grid-template-columns:1fr auto"><label style="font-size:15px">Stop line follows the black tape automatically (if the camera moves a little)</label><span class="switch"><input type="checkbox" data-set="det.autoAlign"><span></span></span></div>
           <div class="field" style="grid-template-columns:1fr auto"><label style="font-size:15px">Box any object (good for toys), not only real-vehicle shapes</label><span class="switch"><input type="checkbox" data-set="det.anyObject"><span></span></span></div>
@@ -1195,7 +1211,7 @@ function defaultSettings(){
       {name:'Cross gate', open:90, close:0, mode:'reverse'}
     ],
     sound:{calib:100, gate:50},
-    det:{minScore:35, simThresh:55, maxBoxes:5, anyObject:true, autoAlign:true, motion:true}
+    det:{minScore:35, simThresh:55, maxBoxes:5, anyObject:true, autoAlign:true, motion:true, useJudge:true, jumpMode:'both'}
   };
 }
 function defaultRules(){
@@ -1212,7 +1228,8 @@ const S = {
   lines:[],                   // {id,name,a:{x,y},b:{x,y},thumb}  (x,y are 0..1)
   settings:defaultSettings(),
   rules:defaultRules(),
-  algo:{v:'nn', s:'nn', kv:3, ks:3},
+  algo:{v:'nn', s:'nn', j:'nn', kv:3, ks:3, kj:3},
+  jSamples:[],                // line-jump photos {id,cls:'behind'|'crossed'|'empty',vec,thumb}
   pending:[],
   ignore:[],                  // empty-road spots the AI should ignore {x,y,w,h} 0..1                 // captured photos waiting for a label {id,img,sel}
   mode:'train', step:'veh'
@@ -1228,23 +1245,23 @@ function deepMerge(base, add){
    ===================================================================== */
 const DB = {
   db:null,
-  open(){ return new Promise((res,rej)=>{ const r = indexedDB.open('signalsense-db', 1);
-    r.onupgradeneeded = () => { const d = r.result; ['vehicles','sounds','lines'].forEach(n => d.objectStoreNames.contains(n) || d.createObjectStore(n,{keyPath:'id'})); d.objectStoreNames.contains('kv') || d.createObjectStore('kv',{keyPath:'k'}); };
+  open(){ return new Promise((res,rej)=>{ const r = indexedDB.open('signalsense-db', 2);
+    r.onupgradeneeded = () => { const d = r.result; ['vehicles','sounds','lines','jumps'].forEach(n => d.objectStoreNames.contains(n) || d.createObjectStore(n,{keyPath:'id'})); d.objectStoreNames.contains('kv') || d.createObjectStore('kv',{keyPath:'k'}); };
     r.onsuccess = () => { this.db = r.result; res(); }; r.onerror = () => rej(r.error); }); },
   all(store){ return new Promise((res,rej)=>{ if(!this.db) return res([]); const r = this.db.transaction(store).objectStore(store).getAll(); r.onsuccess=()=>res(r.result||[]); r.onerror=()=>rej(r.error); }); },
   run(store, fn){ return new Promise((res,rej)=>{ if(!this.db) return res(); const t = this.db.transaction(store,'readwrite'); fn(t.objectStore(store)); t.oncomplete=()=>res(); t.onerror=()=>rej(t.error); }); },
   put(store, v){ return this.run(store, s => s.put(v)).catch(e=>console.warn(e)); },
   del(store, id){ return this.run(store, s => s.delete(id)).catch(e=>console.warn(e)); },
   kv(k, v){ return this.put('kv', {k, v}); },
-  clearAll(){ return Promise.all(['vehicles','sounds','lines','kv'].map(n => this.run(n, s => s.clear()))); }
+  clearAll(){ return Promise.all(['vehicles','sounds','lines','jumps','kv'].map(n => this.run(n, s => s.clear()))); }
 };
 const saveMeta = () => { DB.kv('vClasses', S.vClasses); DB.kv('sClasses', S.sClasses); DB.kv('algo', S.algo); };
 const saveSettingsDB = () => { DB.kv('settings', S.settings); DB.kv('rules', S.rules.map(({_last, ...r}) => r)); };
 
 async function loadAll(){
   try { await DB.open(); } catch(e){ toast('Could not open browser storage – data will not be saved.', 'bad'); return; }
-  const [v, s, l, kv] = await Promise.all([DB.all('vehicles'), DB.all('sounds'), DB.all('lines'), DB.all('kv')]);
-  S.vSamples = v; S.sSamples = s; S.lines = l;
+  const [v, s, l, kv, j] = await Promise.all([DB.all('vehicles'), DB.all('sounds'), DB.all('lines'), DB.all('kv'), DB.all('jumps')]);
+  S.vSamples = v; S.sSamples = s; S.lines = l; S.jSamples = j;
   for (const o of kv){
     if (o.k==='vClasses') S.vClasses = o.v;
     if (o.k==='sClasses') S.sClasses = o.v;
@@ -1302,12 +1319,18 @@ class MLP {   // input → hidden (ReLU) → softmax
 
 const Brain = {
   v:{mlp:null, classes:[], acc:null, trained:false, stale:true, info:''},
-  s:{mlp:null, classes:[], acc:null, trained:false, stale:true, info:''}
+  s:{mlp:null, classes:[], acc:null, trained:false, stale:true, info:''},
+  j:{mlp:null, classes:[], acc:null, trained:false, stale:true, info:''}
 };
-const samplesOf = kind => kind==='v' ? S.vSamples : S.sSamples;
-const classesOf = kind => kind==='v' ? S.vClasses : S.sClasses;
-const algoOf = kind => S.algo[kind];
-const kOf = kind => kind==='v' ? S.algo.kv : S.algo.ks;
+const JCLASSES = [
+  {id:'behind',  name:'Waiting behind the line', color:'#22B573', emoji:'🟢'},
+  {id:'crossed', name:'Crossed the line',        color:'#F04A5A', emoji:'🔴'},
+  {id:'empty',   name:'Road empty',              color:'#8B95B2', emoji:'⚪'}
+];
+const samplesOf = kind => kind==='v' ? S.vSamples : kind==='s' ? S.sSamples : S.jSamples;
+const classesOf = kind => kind==='v' ? S.vClasses : kind==='s' ? S.sClasses : JCLASSES;
+const algoOf = kind => S.algo[kind] || 'nn';
+const kOf = kind => kind==='v' ? S.algo.kv : kind==='s' ? S.algo.ks : (S.algo.kj||3);
 const clsById = (kind,id) => classesOf(kind).find(c=>c.id===id);
 
 function predict(kind, vec){
@@ -1336,9 +1359,9 @@ async function trainKind(kind, onProg){
     B.info = classes.length<2 ? 'add at least 2 groups' : 'tested by hiding one example at a time';
   } else {
     const X = samples.map(s=>s.vec), Y = samples.map(s=>classes.indexOf(s.cls));
-    const h = kind==='v' ? 24 : 32, epochs = kind==='v' ? 60 : 120;
+    const h = kind==='s' ? 32 : 24, epochs = kind==='s' ? 120 : 60;
     const mlp = new MLP(X[0].length, h, classes.length);
-    await mlp.train(X, Y, {epochs, lr: kind==='v'?.05:.08, onEpoch:(e)=>onProg(e/epochs)});
+    await mlp.train(X, Y, {epochs, lr: kind==='s'?.08:.05, onEpoch:(e)=>onProg(e/epochs)});
     let ok=0; X.forEach((x,i)=>{ const {out}=mlp.forward(x); let bi=0; for(let j=1;j<out.length;j++) if(out[j]>out[bi]) bi=j; if(bi===Y[i]) ok++; });
     B.mlp=mlp; B.acc=ok/X.length; B.info=`${epochs} rounds · ${h} hidden neurons`;
   }
@@ -1472,6 +1495,75 @@ async function captureVehicle(clsId, src){
   } catch(e){ console.error(e); toast('Could not capture: '+e.message, 'bad'); }
   finally{ capBusy=false; }
 }
+/* =====================================================================
+   LINE-JUMP AI – looks only at the strip of road around the stop line
+   ===================================================================== */
+const roiC = Object.assign(document.createElement('canvas'), {width:224, height:224}), roiX = roiC.getContext('2d');
+function roiBox(W, H){
+  const ln=S.lines[0]; if (!ln) return {x:0, y:0, w:W, h:H};
+  const L=lineOf(ln), xs=[L.a.x*W, L.b.x*W], ys=[L.a.y*H, L.b.y*H], pad=H*.3;
+  const x0=Math.max(0, Math.min(...xs)-W*.04), x1=Math.min(W, Math.max(...xs)+W*.04), y0=Math.max(0, Math.min(...ys)-pad), y1=Math.min(H, Math.max(...ys)+pad);
+  return {x:x0, y:y0, w:Math.max(8,x1-x0), h:Math.max(8,y1-y0)};
+}
+function roiCrop(src){ const W=src.videoWidth||src.naturalWidth||src.width, H=src.videoHeight||src.naturalHeight||src.height, b=roiBox(W,H); roiX.drawImage(src, b.x, b.y, b.w, b.h, 0, 0, 224, 224); return roiC; }
+let jBusy=false;
+async function captureJump(cls, src){
+  if (jBusy) return; jBusy=true;
+  try{
+    src = src || video;
+    if (src===video && !Cam.on){ toast('Turn the camera on first 📷'); return; }
+    if (!S.lines.length) toast('Tip: draw the stop line first (Road line step) so the AI looks at the right place', 'warn');
+    if (!await loadMP()) return;
+    const c=roiCrop(src), s={id:uid(), cls, vec:embedCanvas(c), thumb:thumbOf(c)};
+    S.jSamples.push(s); DB.put('jumps', s); Brain.j.stale=true;
+    if (src===video){ const f=$('#flash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go'); }
+    renderJ(); renderCounts();
+  } catch(e){ console.error(e); toast('Could not capture: '+e.message, 'bad'); }
+  finally{ jBusy=false; }
+}
+function renderJ(){
+  $('#jList').innerHTML = JCLASSES.map(c=>{ const ss=S.jSamples.filter(x=>x.cls===c.id), shown=ss.slice(-11).reverse();
+    return `<div class="cls" style="--c:${c.color}">
+      <div class="cls-h"><span class="dot"></span><b>${c.emoji} ${c.name}</b><span class="cnt">${ss.length} photo${ss.length===1?'':'s'}</span></div>
+      <div class="thumbs">${shown.map(x=>`<div class="th"><img src="${x.thumb}" alt=""><button data-act="delJS" data-id="${x.id}" title="Remove photo">${icon('i-x')}</button></div>`).join('')}${ss.length>11?`<div class="th more">+${ss.length-11}</div>`:''}${!ss.length?'<em>No photos yet</em>':''}</div>
+      <div class="cls-a"><button class="btn sm" style="background:${c.color};color:#fff;border:0;box-shadow:0 4px 0 rgba(0,0,0,.18)" data-jcap="${c.id}">${icon('i-cam')}${c.name}</button>
+        <label class="btn sm">${icon('i-up')}Upload<input type="file" accept="image/*" multiple hidden data-jup="${c.id}"></label></div></div>`; }).join('');
+}
+let jHoldT=null, jHoldI=null;
+document.addEventListener('pointerdown', e => { const b=e.target.closest('[data-jcap]'); if (!b) return; e.preventDefault(); const id=b.dataset.jcap; captureJump(id);
+  jHoldT=setTimeout(()=>{ jHoldI=setInterval(()=>captureJump(id), 300); }, 400);
+  const stop=()=>{ clearTimeout(jHoldT); clearInterval(jHoldI); }; b.addEventListener('pointerleave', stop, {once:true}); document.addEventListener('pointerup', stop, {once:true}); });
+document.addEventListener('change', async e => { const up=e.target.closest('[data-jup]'); if (!up) return; const files=[...up.files]; up.value=''; for (const f of files){ const img=await fileToImg(f); await captureJump(up.dataset.jup, img); } });
+
+/* live: classify the line strip a few times a second, smooth it, and react */
+const Judge = { hist:[], state:null, conf:0, last:0, viol:false, rule:null };
+function judgeActive(){ return S.settings.det.useJudge && S.settings.det.jumpMode!=='track' && S.jSamples.length>0 && new Set(S.jSamples.map(x=>x.cls)).size>=2 && MP.ready; }
+function judgeStep(t){
+  if (!judgeActive()){ Judge.state=null; return; }
+  if (t-Judge.last<300) return; Judge.last=t;
+  const p=predict('j', embedCanvas(roiCrop(video))); if (!p) return;
+  Judge.hist.push(p.conf>=.55 ? p.cls : null); if (Judge.hist.length>5) Judge.hist.shift();
+  const cnt={}; Judge.hist.forEach(c=>{ if (c) cnt[c]=(cnt[c]||0)+1; });
+  const top=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0], next = top && top[1]>=3 ? top[0] : null;
+  Judge.conf=p.conf;
+  if (!next || next===Judge.state) return;
+  const prev=Judge.state; Judge.state=next;
+  if (next==='crossed' && prev){   // a vehicle just went over the line
+    setStat('cross', Stats.cross+1);
+    if (Sig.state==='R'){ setStat('viol', Stats.viol+1); const st=$('#stage'); st.classList.remove('viol'); void st.offsetWidth; st.classList.add('viol'); logEv('🚨 Line-jump AI: a vehicle crossed the line on RED!', 'var(--red)'); }
+    else logEv('🚗 Line-jump AI: a vehicle crossed the line', 'var(--teal)');
+    const now=performance.now();
+    for (const r of S.rules){
+      if (!r.on || r.trigger!=='cross' || (r.when!=='any' && r.when!==Sig.state)) continue;
+      if (r.action==='holdRed'){ if (Sig.state==='R'){ Judge.viol=true; Judge.rule=r.id; r._last=now; toast('Rule: crossed on RED → red stays on until the vehicle goes back', 'bad'); } continue; }
+      if (now-(r._last||-1e9) < (+r.cool||3)*1000) continue; r._last=now; doAction(r, 'cross', {name:S.lines[0]?.name||'the line'});
+    }
+  } else if (Judge.viol && (next==='behind' || next==='empty')){
+    Judge.viol=false; logEv(next==='behind' ? '↩️ Line-jump AI: the vehicle went back behind the line – red can finish now' : '✅ Line-jump AI: the road is empty – red can finish now', 'var(--green)');
+  }
+  renderHud();
+}
+
 /* ---- photo tray: capture now, label later (nothing is detected automatically in training) ---- */
 const snapC = document.createElement('canvas');
 function capturePhoto(){
@@ -1830,7 +1922,7 @@ function onStatus(str){
   const p = String(str).trim().split(','); if (p[0]!=='S') return;
   const st=p[1], rem=+p[2]||0;
   if (st!==Sig.state || rem>Sig.total){ Sig.total=Math.max(rem,1); }
-  if (st!==Sig.state){ if (st!=='R'){ tracks.forEach(tr=>tr.viol=null); Hold.on=false; } Sig.prevState=Sig.state; Sig.state=st; logEv(st==='R'?'🔴 Light turned RED – gate 1 closes':st==='G'?'🟢 Light turned GREEN – gate 1 opens':'🟡 Light turned YELLOW', st==='R'?'var(--red)':st==='G'?'var(--green)':'var(--sun)', true); }
+  if (st!==Sig.state){ if (st!=='R'){ tracks.forEach(tr=>tr.viol=null); Hold.on=false; Judge.viol=false; } Sig.prevState=Sig.state; Sig.state=st; logEv(st==='R'?'🔴 Light turned RED – gate 1 closes':st==='G'?'🟢 Light turned GREEN – gate 1 opens':'🟡 Light turned YELLOW', st==='R'?'var(--red)':st==='G'?'var(--green)':'var(--sun)', true); }
   const changed = rem!==Sig.remain; Sig.remain=rem; Sig.paused=p[3]==='1';
   renderSignal(changed);
 }
@@ -1854,7 +1946,7 @@ function renderGates(force){
 }
 function renderHud(){
   const st=Sig.state, c = st==='R'?'var(--red)':st==='Y'?'var(--sun)':'var(--green)';
-  $('#hud').innerHTML = (S.mode==='live' && (Cam.on)) ? `<span class="hp" style="--c:${c}"><i></i>${st==='R'?'RED':st==='Y'?'YELLOW':'GREEN'} · ${Sig.remain}s</span>${Mic.on?`<span class="hp" style="--c:var(--lilac)"><i></i>${Math.round(Mic.dbS)} dB</span>`:''}${Hold.on?`<span class="hp" style="--c:var(--red)"><i></i>Holding RED · gate closed</span>`:''}${Cal.state==='locked'?`<span class="hp" style="--c:var(--blue)"><i></i>🔒 Line locked · watching vehicles</span>`:Cal.state==='search'?`<span class="hp" style="--c:var(--sun)"><i></i>Camera moved – finding the line…</span>`:Cal.state==='calib'?`<span class="hp" style="--c:var(--sun)"><i></i>Calibrating…</span>`:''}` : '';
+  $('#hud').innerHTML = (S.mode==='live' && (Cam.on)) ? `<span class="hp" style="--c:${c}"><i></i>${st==='R'?'RED':st==='Y'?'YELLOW':'GREEN'} · ${Sig.remain}s</span>${Mic.on?`<span class="hp" style="--c:var(--lilac)"><i></i>${Math.round(Mic.dbS)} dB</span>`:''}${Hold.on?`<span class="hp" style="--c:var(--red)"><i></i>Holding RED · gate closed</span>`:''}${Judge.state && judgeActive()?`<span class="hp" style="--c:${(JCLASSES.find(c=>c.id===Judge.state)||{}).color}"><i></i>Line AI: ${(JCLASSES.find(c=>c.id===Judge.state)||{}).name}</span>`:''}${Cal.state==='locked'?`<span class="hp" style="--c:var(--blue)"><i></i>🔒 Line locked · watching vehicles</span>`:Cal.state==='search'?`<span class="hp" style="--c:var(--sun)"><i></i>Camera moved – finding the line…</span>`:Cal.state==='calib'?`<span class="hp" style="--c:var(--sun)"><i></i>Calibrating…</span>`:''}` : '';
 }
 
 /* =====================================================================
@@ -1956,14 +2048,16 @@ function holdStep(t){
     if (sd!==0 && sd===tr.viol.origin){ logEv(`↩️ ${esc(vehName(tr))} #${tr.id} went back behind “${esc(ln.name)}” – the red light can finish now`, 'var(--green)'); tr.viol=null; delete tr.crossT[ln.id]; continue; }
     if (!active) active=tr;
   }
-  const r = active && S.rules.find(x=>x.id===active.viol.rule && x.on);
+  let r = active && S.rules.find(x=>x.id===active.viol.rule && x.on);
+  if (!r && Judge.viol) r = S.rules.find(x=>x.id===Judge.rule && x.on);
   if (r && Sig.state==='R'){
-    if (!Hold.on){ Hold.on=true; Hold.last=0; logEv(`⛔ RED stays on and the gate stays closed until ${esc(vehName(active))} #${active.id} goes back`, 'var(--red)'); }
+    if (!Hold.on){ Hold.on=true; Hold.last=0; logEv(active ? `⛔ RED stays on and the gate stays closed until ${esc(vehName(active))} #${active.id} goes back` : '⛔ RED stays on and the gate stays closed until the vehicle goes back', 'var(--red)'); }
     Hold.rule=r.id;
     if (t-Hold.last>=1000){ Hold.last=t; send(`HOLD,${+r.sec||0}`); if (+r.sec) setStat('add', Stats.add+(+r.sec)); }
-  } else if (Hold.on){ Hold.on=false; Hold.rule=null; if (!active) logEv('✅ Road is clear behind the line – normal timing again', 'var(--green)'); }
+  } else if (Hold.on){ Hold.on=false; Hold.rule=null; if (!active && !Judge.viol) logEv('✅ Road is clear behind the line – normal timing again', 'var(--green)'); }
 }
 function onCross(tr, ln, t, origin){
+  if (S.settings.det.jumpMode==='judge' && judgeActive()) return;   // the trained Line-jump AI decides instead
   tr.flash=t; setStat('cross', Stats.cross+1);
   if (Sig.state==='R'){ setStat('viol', Stats.viol+1); const st=$('#stage'); st.classList.remove('viol'); void st.offsetWidth; st.classList.add('viol'); logEv(`🚨 ${esc(vehName(tr))} #${tr.id} crossed “${esc(ln.name)}” on RED!`, 'var(--red)'); }
   else logEv(`🚗 ${esc(vehName(tr))} #${tr.id} crossed “${esc(ln.name)}”`, 'var(--teal)');
@@ -2047,6 +2141,11 @@ function drawOverlay(t){
   const showLines = S.mode==='live' || S.step==='line';
   const calCol = Cal.state==='calib' ? '#FFB020' : Cal.state==='found' ? '#22B573' : Cal.state==='search' ? '#8B95B2' : null;
   if (showLines && !(S.mode==='live' && Cal.state==='calib' && !S.lines.some(l=>l._tape))) S.lines.forEach(l0 => { const l={...lineOf(l0), name:l0.name}; drawLine(octx, {x:l.a.x*W, y:l.a.y*H}, {x:l.b.x*W, y:l.b.y*H}, S.mode==='live' ? (calCol || (Sig.state==='R'?'#F04A5A':Sig.state==='Y'?'#E0A800':'#22B573')) : '#3D6BFF', l.name, sc, S.mode==='live'); });
+  if (S.mode==='train' && S.step==='jump'){
+    const b=roiBox(W,H); octx.save(); octx.setLineDash([10*sc,8*sc]); octx.lineWidth=3*sc; octx.strokeStyle='#F04A5A'; octx.strokeRect(b.x,b.y,b.w,b.h); octx.setLineDash([]);
+    octx.font=`800 ${14*sc}px Plus Jakarta Sans`; const tx='Line-jump AI looks here', tw=octx.measureText(tx).width; octx.fillStyle='#F04A5A'; rr(octx, b.x+6*sc, b.y+6*sc, tw+18*sc, 24*sc, 12*sc); octx.fill(); octx.fillStyle='#fff'; octx.textBaseline='middle'; octx.fillText(tx, b.x+15*sc, b.y+18*sc+1); octx.restore();
+    S.lines.forEach(l0=>{ const l=lineOf(l0); drawLine(octx, {x:l.a.x*W, y:l.a.y*H}, {x:l.b.x*W, y:l.b.y*H}, '#3D6BFF', l0.name, sc, false); });
+  }
   if (S.mode==='live'){
     octx.save(); octx.setLineDash([5*sc,5*sc]); octx.lineWidth=1.5*sc; octx.strokeStyle='rgba(98,107,137,.55)'; octx.fillStyle='rgba(98,107,137,.10)';
     S.ignore.forEach(z=>{ octx.fillRect(z.x*W,z.y*H,z.w*W,z.h*H); octx.strokeRect(z.x*W,z.y*H,z.w*W,z.h*H); }); octx.restore();
@@ -2169,7 +2268,7 @@ function loop(t){
   if (live && Cal.state==='search') holdStep(t);   // keep a red-light hold going while the line is found again
   if (live && detecting() && MP.ready && t-lastDetT>70){   // vehicles are only detected after the line is locked
     lastDetT=t;
-    try{ if (BgLearn.until) bgStep(t); else { updateTracks(detectAll(), t); lineWatch(t); } } catch(e){ console.warn(e); }
+    try{ if (BgLearn.until) bgStep(t); else { updateTracks(detectAll(), t); lineWatch(t); judgeStep(t); } } catch(e){ console.warn(e); }
   }
   drawOverlay(t);
 }
@@ -2193,6 +2292,8 @@ function toast(msg, kind){
    TRAIN STEP UI
    ===================================================================== */
 const ALGO_TXT = {
+  j:{knn:k=>`<b>K-Nearest Neighbours (k=${k})</b> · the strip around the stop line becomes 1024 numbers (MobileNet-V3); the ${k} most similar line photos vote: behind, crossed or empty.`,
+     nn:()=>`<b>Neural Network</b> · the strip around the stop line becomes 1024 numbers (MobileNet-V3) and a small neural network decides: behind, crossed or empty.`},
   v:{knn:k=>`<b>K-Nearest Neighbours (k=${k})</b> · MediaPipe EfficientDet boxes the object, MobileNet-V3 turns it into 1024 numbers, then the AI finds the ${k} most similar training photos and lets them vote.`,
      nn:()=>`<b>Neural Network</b> · MediaPipe EfficientDet boxes the object, MobileNet-V3 turns it into 1024 numbers, then a small neural network (1 hidden layer) that learned from your photos picks the vehicle.`},
   s:{knn:k=>`<b>K-Nearest Neighbours (k=${k})</b> · the mic sound is split into 32 frequency bands (a “sound fingerprint”), then the ${k} closest recorded clips vote.`,
@@ -2200,15 +2301,15 @@ const ALGO_TXT = {
 };
 const algoName = kind => algoOf(kind)==='nn' ? 'Neural Network' : `KNN (k=${kOf(kind)})`;
 function renderAI(){
-  const rows = kind => { const B=Brain[kind], c = kind==='v'?{c:'var(--peach-d)',s:'var(--peach-s)',i:'i-car',t:'Vehicles'}:{c:'var(--lilac-d)',s:'var(--lilac-s)',i:'i-wave',t:'Sounds'};
+  const rows = kind => { const B=Brain[kind], c = kind==='v'?{c:'var(--peach-d)',s:'var(--peach-s)',i:'i-car',t:'Vehicles'}:kind==='s'?{c:'var(--lilac-d)',s:'var(--lilac-s)',i:'i-wave',t:'Sounds'}:{c:'var(--red-d)',s:'var(--red-s)',i:'i-signal',t:'Line jump'};
     const status = !samplesOf(kind).length ? 'no data yet' : B.acc!=null ? `accuracy ${Math.round(B.acc*100)}%${B.stale?' · new data, train again':''}` : B.stale ? 'press Train AI' : B.info;
     return `<div class="ai-row" style="--c:${c.c};--c-s:${c.s}"><span class="ic">${icon(c.i)}</span><div class="grow"><b>${c.t}: ${algoName(kind)}</b><span>${status}</span></div></div>`; };
   const vis = `<div class="ai-row" style="--c:var(--blue-d);--c-s:var(--blue-s)"><span class="ic">${icon('i-snap')}</span><div class="grow"><b>Tracker: Google MediaPipe</b><span>EfficientDet-Lite0 object detector + MobileNet-V3 features</span></div></div>`;
-  $('#aiRows').innerHTML = vis + rows('v') + rows('s'); $('#aiRows2').innerHTML = vis + rows('v') + rows('s');
+  $('#aiRows').innerHTML = vis + rows('v') + rows('s') + rows('j'); $('#aiRows2').innerHTML = vis + rows('v') + rows('s') + rows('j');
   const acc = (kind, el, elt) => { const B=Brain[kind]; $(el).textContent = B.acc!=null ? Math.round(B.acc*100)+'%' : '—'; $(elt).textContent = !samplesOf(kind).length ? 'no data yet' : B.trained ? (B.stale?'new data – train again':B.info) : 'not trained'; };
-  acc('v','#accV','#accVt'); acc('s','#accS','#accSt');
+  acc('v','#accV','#accVt'); acc('s','#accS','#accSt'); acc('j','#accJ','#accJt'); $('#kJwrap').style.display = algoOf('j')==='knn'?'flex':'none';
   $('#kVwrap').style.display = S.algo.v==='knn'?'flex':'none'; $('#kSwrap').style.display = S.algo.s==='knn'?'flex':'none';
-  $('#explain').innerHTML = `🚗 ${ALGO_TXT.v[S.algo.v](S.algo.kv)}<br><br>🔊 ${ALGO_TXT.s[S.algo.s](S.algo.ks)}`;
+  $('#explain').innerHTML = `🚗 ${ALGO_TXT.v[S.algo.v](S.algo.kv)}<br><br>🔊 ${ALGO_TXT.s[S.algo.s](S.algo.ks)}<br><br>🚦 ${ALGO_TXT.j[algoOf('j')](kOf('j'))}`;
   $('#dataSum').textContent = `${S.vSamples.length} vehicle photos · ${S.sSamples.length} sound clips`;
   renderViz(false);
 }
@@ -2229,9 +2330,11 @@ function renderViz(run){
 async function trainAll(silent){
   const btn=$('#trainBtn'), bar=$('#trainBar'); btn.disabled=true; renderViz(true);
   try{
-    await trainKind('v', p=>bar.style.width=(p*50)+'%');
-    await trainKind('s', p=>bar.style.width=(50+p*50)+'%');
-    if (!silent){ const v=Brain.v.acc, s=Brain.s.acc; toast(`AI trained! 🚗 ${v!=null?Math.round(v*100)+'%':'—'} · 🔊 ${s!=null?Math.round(s*100)+'%':'—'}`, 'ok'); }
+    await trainKind('v', p=>bar.style.width=(p*33)+'%');
+    await trainKind('s', p=>bar.style.width=(33+p*33)+'%');
+    await trainKind('j', p=>bar.style.width=(66+p*34)+'%');
+    const f=a=>a!=null?Math.round(a*100)+'%':'—';
+    if (!silent) toast(`AI trained! 🚗 ${f(Brain.v.acc)} · 🔊 ${f(Brain.s.acc)} · 🚦 ${f(Brain.j.acc)}`, 'ok');
   } catch(e){ console.error(e); toast('Training failed: '+e.message, 'bad'); }
   btn.disabled=false; setTimeout(()=>{ bar.style.width='0'; renderViz(false); }, 900); renderAI(); renderCounts();
 }
@@ -2314,7 +2417,7 @@ const PRESETS = {
   busy:()=>({trigger:'count', n:3, when:'R', action:'goGreen', cool:15}),
   blank:()=>({trigger:'cross', line:'any', when:'R', action:'addRed', sec:3, cool:3})
 };
-function renderDataStats(){ $('#dataStats').innerHTML = `Saved now: <b>${S.vClasses.length}</b> vehicles (${S.vSamples.length} photos) · <b>${S.sClasses.length}</b> sounds (${S.sSamples.length} clips) · <b>${S.lines.length}</b> road lines · <b>${S.rules.length}</b> rules.`; }
+function renderDataStats(){ $('#dataStats').innerHTML = `Saved now: <b>${S.vClasses.length}</b> vehicles (${S.vSamples.length} photos) · <b>${S.sClasses.length}</b> sounds (${S.sSamples.length} clips) · <b>${S.lines.length}</b> road lines · <b>${S.jSamples.length}</b> line-jump photos · <b>${S.rules.length}</b> rules.`; }
 
 document.addEventListener('input', e => {
   const el=e.target;
@@ -2326,9 +2429,10 @@ document.addEventListener('input', e => {
 document.addEventListener('change', e => {
   const el=e.target;
   if (el.dataset.g!==undefined && el.tagName==='SELECT'){ S.settings.servos[+el.dataset.g].mode = el.value; markUnsaved(); }
+  if (el.id==='algoJ'){ S.algo.j=el.value; Brain.j.stale=true; saveMeta(); renderAI(); renderCounts(); }
   if (el.id==='algoV' || el.id==='algoS'){ S.algo[el.id==='algoV'?'v':'s']=el.value; Brain[el.id==='algoV'?'v':'s'].stale=true; saveMeta(); renderAI(); renderCounts(); }
 });
-['kV','kS'].forEach(id => $('#'+id).addEventListener('input', e => { const k = id==='kV'?'kv':'ks'; S.algo[k]=+e.target.value; $('#'+id+'v').textContent=e.target.value; paintRange(e.target); saveMeta(); renderAI(); }));
+['kV','kS','kJ'].forEach(id => $('#'+id).addEventListener('input', e => { const k = id==='kV'?'kv':id==='kS'?'ks':'kj'; S.algo[k]=+e.target.value; $('#'+id+'v').textContent=e.target.value; paintRange(e.target); saveMeta(); renderAI(); }));
 let saveT=null;
 function markUnsaved(){ clearTimeout(saveT); saveT=setTimeout(saveSettingsDB, 400); $('#setNote').innerHTML = '<b style="color:var(--peach-d)">● Saved in this browser</b> – press the button to send the changes to the Arduino.'; }
 
@@ -2363,11 +2467,12 @@ function setMode(m){
   if (m==='live' && Brain.v.stale && S.vSamples.length && S.algo.v==='nn') toast('Tip: you added new data – train the AI again for best results.', 'warn');
 }
 function movePill(){ const b=$('#modes button[aria-selected="true"]'), p=$('#modes .pill'); p.style.width=b.offsetWidth+'px'; p.style.transform=`translateX(${b.offsetLeft-4}px)`; }
-function setStep(s){ S.step=s; $$('.steps button').forEach(b=>b.setAttribute('aria-selected', b.dataset.step===s)); $$('.step').forEach(x=>x.classList.toggle('on', x.id==='st-'+s)); if (s!=='line') closeFreeze(); if (s==='brain') renderAI(); }
+function setStep(s){ S.step=s; $$('.steps button').forEach(b=>b.setAttribute('aria-selected', b.dataset.step===s)); $$('.step').forEach(x=>x.classList.toggle('on', x.id==='st-'+s)); if (s!=='line') closeFreeze(); if (s==='brain') renderAI(); if (s==='jump') renderSettings(); }
 function renderCounts(){
   const set=(id,n,show)=>{ const e=$(id); e.textContent=n; e.classList.toggle('show', show); };
   set('#cnt-veh', S.vSamples.length, S.vSamples.length>0); set('#cnt-line', S.lines.length, S.lines.length>0); set('#cnt-snd', S.sSamples.length, S.sSamples.length>0);
-  set('#cnt-brain', '!', (Brain.v.stale && S.vSamples.length>0) || (Brain.s.stale && S.sSamples.length>0));
+  set('#cnt-jump', S.jSamples.length, S.jSamples.length>0);
+  set('#cnt-brain', '!', (Brain.v.stale && S.vSamples.length>0) || (Brain.s.stale && S.sSamples.length>0) || (Brain.j.stale && S.jSamples.length>0));
   renderAI();
 }
 
@@ -2422,6 +2527,7 @@ document.addEventListener('click', async e => {
     case 'cropClear': Crop.box=null; drawCrop(); break;
     case 'trayAll': { const all = S.pending.every(p=>p.sel); S.pending.forEach(p=>p.sel=!all); savePending(); renderTray(); break; }
     case 'trayDel': S.pending = S.pending.filter(p=>!p.sel); savePending(); renderTray(); break;
+    case 'delJS': S.jSamples=S.jSamples.filter(x=>x.id!==id); DB.del('jumps', id); Brain.j.stale=true; renderJ(); renderCounts(); break;
     case 'delVS': S.vSamples=S.vSamples.filter(s=>s.id!==id); DB.del('vehicles', id); Brain.v.stale=true; renderV(); renderCounts(); break;
     case 'delS': { const c=clsById('s',id); if (!confirm(`Delete “${c.name}” and all its clips?`)) return; S.sClasses=S.sClasses.filter(x=>x.id!==id); S.sSamples.filter(s=>s.cls===id).forEach(s=>DB.del('sounds',s.id)); S.sSamples=S.sSamples.filter(s=>s.cls!==id); Brain.s.stale=true; saveMeta(); renderS(); renderCounts(); break; }
     case 'undoS': { const last=[...S.sSamples].reverse().find(s=>s.cls===id); if (last){ S.sSamples=S.sSamples.filter(s=>s!==last); DB.del('sounds', last.id); Brain.s.stale=true; renderS(); renderCounts(); } break; }
@@ -2464,7 +2570,7 @@ $('#forgetBtn2').addEventListener('click', ()=>$('#cfScrim').classList.add('on')
 $('#footSet').addEventListener('click', ()=>openSettings());
 $('#cfYes').addEventListener('click', async ()=>{
   await DB.clearAll(); try{ localStorage.removeItem('signalsense'); }catch(e){}
-  Object.assign(S, {ignore:[], pending:[], vClasses:[], vSamples:[], sClasses:[], sSamples:[], lines:[], settings:defaultSettings(), rules:defaultRules(), algo:{v:'nn',s:'nn',kv:3,ks:3}});
+  Object.assign(S, {jSamples:[], ignore:[], pending:[], vClasses:[], vSamples:[], sClasses:[], sSamples:[], lines:[], settings:defaultSettings(), rules:defaultRules(), algo:{v:'nn',s:'nn',j:'nn',kv:3,ks:3,kj:3}});
   Object.values(Brain).forEach(B=>Object.assign(B,{mlp:null,classes:[],acc:null,trained:false,stale:true}));
   $$('.scrim').forEach(s=>s.classList.remove('on')); syncAlgoInputs(); renderAll(); renderResume(); pushConfig(false);
   toast('All data forgotten. Fresh start! ✨', 'ok');
@@ -2477,7 +2583,7 @@ document.addEventListener('keydown', e => { if (e.key==='Escape') closeRules(); 
 /* export / import */
 function exportData(){
   const plain = s => ({...s, vec:Array.from(s.vec, x=>+x.toFixed(5))});
-  const data = {app:'SignalSense', version:1, date:new Date().toISOString(), vClasses:S.vClasses, sClasses:S.sClasses, vSamples:S.vSamples.map(plain), sSamples:S.sSamples.map(plain), lines:S.lines, settings:S.settings, rules:S.rules.map(({_last,...r})=>r), algo:S.algo};
+  const data = {app:'SignalSense', version:1, date:new Date().toISOString(), vClasses:S.vClasses, sClasses:S.sClasses, vSamples:S.vSamples.map(plain), sSamples:S.sSamples.map(plain), jSamples:S.jSamples.map(plain), lines:S.lines, settings:S.settings, rules:S.rules.map(({_last,...r})=>r), algo:S.algo};
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(data)],{type:'application/json'})); a.download=`signalsense-backup-${new Date().toISOString().slice(0,10)}.json`; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
 }
 $('#importFile').addEventListener('change', async e => {
@@ -2486,15 +2592,15 @@ $('#importFile').addEventListener('change', async e => {
     const d = JSON.parse(await f.text()); if (d.app!=='SignalSense') throw new Error('not a SignalSense backup');
     await DB.clearAll();
     const fix = s => ({...s, vec:Float32Array.from(s.vec)});
-    Object.assign(S, {vClasses:d.vClasses||[], sClasses:d.sClasses||[], vSamples:(d.vSamples||[]).map(fix), sSamples:(d.sSamples||[]).map(fix), lines:d.lines||[], settings:deepMerge(defaultSettings(), d.settings||{}), rules:d.rules||[], algo:{...S.algo, ...(d.algo||{})}});
-    for (const s of S.vSamples) await DB.put('vehicles', s); for (const s of S.sSamples) await DB.put('sounds', s); for (const l of S.lines) await DB.put('lines', l);
+    Object.assign(S, {vClasses:d.vClasses||[], sClasses:d.sClasses||[], vSamples:(d.vSamples||[]).map(fix), sSamples:(d.sSamples||[]).map(fix), jSamples:(d.jSamples||[]).map(fix), lines:d.lines||[], settings:deepMerge(defaultSettings(), d.settings||{}), rules:d.rules||[], algo:{...S.algo, ...(d.algo||{})}});
+    for (const s of S.vSamples) await DB.put('vehicles', s); for (const s of S.sSamples) await DB.put('sounds', s); for (const s of S.jSamples) await DB.put('jumps', s); for (const l of S.lines) await DB.put('lines', l);
     saveMeta(); saveSettingsDB(); syncAlgoInputs(); renderAll(); renderSettings(); await trainAll(true); pushConfig(false);
     toast('Backup loaded ✔', 'ok');
   } catch(err){ toast('Could not load backup: '+err.message, 'bad'); }
 });
 
-function syncAlgoInputs(){ $('#algoV').value=S.algo.v; $('#algoS').value=S.algo.s; $('#kV').value=S.algo.kv; $('#kS').value=S.algo.ks; $('#kVv').textContent=S.algo.kv; $('#kSv').textContent=S.algo.ks; paintRange($('#kV')); paintRange($('#kS')); }
-function renderAll(){ renderRuleMini(); renderIgnore(); renderTray(); renderV(); renderS(); renderLines(); renderCounts(); renderGates(); renderSignal(false); }
+function syncAlgoInputs(){ $('#algoJ').value=algoOf('j'); $('#kJ').value=kOf('j'); $('#kJv').textContent=kOf('j'); paintRange($('#kJ')); $('#algoV').value=S.algo.v; $('#algoS').value=S.algo.s; $('#kV').value=S.algo.kv; $('#kS').value=S.algo.ks; $('#kVv').textContent=S.algo.kv; $('#kSv').textContent=S.algo.ks; paintRange($('#kV')); paintRange($('#kS')); }
+function renderAll(){ renderJ(); renderRuleMini(); renderIgnore(); renderTray(); renderV(); renderS(); renderLines(); renderCounts(); renderGates(); renderSignal(false); }
 
 /* =====================================================================
    START
@@ -2508,7 +2614,7 @@ function renderAll(){ renderRuleMini(); renderIgnore(); renderTray(); renderV();
   let view='home'; try{ view=localStorage.getItem('ss-view')||'home'; }catch(e){}
   if (view==='lab' || location.hash==='#lab') showApp();
   Sim.begin();
-  if (S.vSamples.length || S.sSamples.length) trainAll(true);
+  if (S.vSamples.length || S.sSamples.length || S.jSamples.length) trainAll(true);
   logEv('👋 SignalSense started. Signal runs in the simulator until you connect the Arduino.', 'var(--teal)');
   requestAnimationFrame(loop);
 })();
