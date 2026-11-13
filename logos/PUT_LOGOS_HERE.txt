@@ -1,0 +1,5 @@
+Put your two logo files here:
+  logo1.png  (left logo)
+  logo2.png  (right logo)
+Any size works - they are scaled to fit the navbar.
+Using .jpg/.svg? Rename them, or change the two <img src> paths near the top of index.html.
