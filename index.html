@@ -563,6 +563,17 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
 .sec h4{font-size:19px;margin:16px 0 2px}
 .sec h4:first-child{margin-top:0}
 
+/* live calibration card */
+.calib{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:6;display:flex;gap:14px;align-items:center;background:rgba(255,255,255,.96);border-radius:20px;padding:14px 18px;box-shadow:0 20px 40px -18px rgba(27,33,64,.55);width:min(520px,calc(100% - 24px));animation:mpop .35s var(--spring) both}
+.calib b{font:800 19px var(--fd);display:block;line-height:1.2}
+.calib p{font-size:13.5px;color:var(--muted);margin-top:2px}
+.calring{--p:0;width:62px;height:62px;border-radius:50%;flex:none;display:grid;place-items:center;background:conic-gradient(var(--sun) calc(var(--p)*1%),var(--bg2) 0);position:relative;transition:background .3s}
+.calring::before{content:"";position:absolute;inset:7px;border-radius:50%;background:#fff}
+.calring span{position:relative;font:800 15px var(--fd)}
+.calring::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:3px solid transparent;border-top-color:var(--sun);animation:spin 1s linear infinite}
+.calok{width:56px;height:56px;border-radius:18px;flex:none;display:grid;place-items:center;background:var(--green);color:#fff;font:800 28px var(--fd);animation:thpop .5s var(--spring)}
+.calok.bad{background:var(--sun);color:#3D2A00}
+
 /* rules drawer (like the reference: WHEN / THEN cards) */
 #rulesScrim{z-index:84}
 .drawer{position:fixed;right:12px;top:12px;bottom:12px;width:min(620px,calc(100% - 24px));background:#fff;border-radius:28px;z-index:85;box-shadow:-30px 0 80px -20px rgba(27,33,64,.4);transform:translateX(112%);transition:transform .45s var(--spring);display:flex;flex-direction:column}
@@ -961,7 +972,7 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
 
     <!-- ================= LIVE ================= -->
     <section class="view" id="v-live">
-      <div class="page-head"><div><div class="kick">Live mode</div><h1>The signal is thinking <span class="badge" id="mpBadge2">AI vision: sleeping</span></h1><p>Every vehicle gets a box, trained or not. <b>First:</b> take the vehicles off the road and press <b>Learn empty road</b> so the AI ignores the tape, shadows and marks.</p></div></div>
+      <div class="page-head"><div><div class="kick">Live mode</div><h1>The signal is thinking <span class="badge" id="mpBadge2">AI vision: sleeping</span></h1><p>Turn the camera on: the app first <b>calibrates the stop line</b>. Press <b>Lock line &amp; start</b> and the AI begins watching vehicles – trained or not. The line keeps following the tape if the camera moves.</p></div></div>
       <div class="col">
         <div class="card" style="--i:0">
           <div class="stats">
@@ -976,7 +987,8 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
             <button class="btn pri" data-act="cam"><svg><use href="#i-cam"/></svg><span>Turn camera on</span></button>
             <button class="btn" data-act="flip"><svg><use href="#i-flip"/></svg>Switch camera</button>
             <button class="btn lilac" data-act="mic"><svg><use href="#i-mic"/></svg><span>Turn mic on</span></button>
-            <button class="btn sm sun" data-act="learnBg" style="margin-left:auto" title="Take all vehicles off the road, then press"><svg><use href="#i-road"/></svg>Learn empty road</button>
+            <button class="btn sm hidden" data-act="recal" id="recalBtn" style="margin-left:auto">↻ Recalibrate line</button>
+            <button class="btn sm sun" data-act="learnBg" title="Take all vehicles off the road, then press"><svg><use href="#i-road"/></svg>Learn empty road</button>
             <button class="btn sm hidden" data-act="clearBg" id="clearBgBtn"></button>
             <button class="btn sm" data-act="resetStats">Reset counters</button>
           </div>
@@ -1046,6 +1058,7 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
   <canvas id="freeze" class="hide"></canvas>
   <div class="hud" id="hud"></div>
   <div class="linehelp hide" id="linehelp">Tap point 1 of the line</div>
+  <div class="calib hidden" id="calib"></div>
   <div class="flash" id="flash"></div>
 </div>
 
@@ -1366,9 +1379,10 @@ async function camStart(){
     Cam.stream = await navigator.mediaDevices.getUserMedia({video:{...v, width:{ideal:1280}, height:{ideal:720}}, audio:false});
     video.srcObject = Cam.stream; await video.play().catch(()=>{});
     Cam.on = true; camUI(); loadMP();
+    if (S.mode==='live'){ if (video.readyState>=2) startCalibration(); else video.addEventListener('loadeddata', startCalibration, {once:true}); }
   } catch(e){ console.error(e); toast('Camera blocked or not found. Allow camera access in the browser.', 'bad'); Cam.on=false; camUI(); }
 }
-function camStop(){ Cam.stream?.getTracks().forEach(t=>t.stop()); Cam.stream=null; Cam.on=false; video.srcObject=null; tracks=[]; camUI(); }
+function camStop(){ Cam.stream?.getTracks().forEach(t=>t.stop()); Cam.stream=null; Cam.on=false; video.srcObject=null; tracks=[]; Cal.state='idle'; renderCal(); camUI(); }
 async function camFlip(){
   const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput');
   if (devs.length > 1){
@@ -1601,8 +1615,8 @@ function relTo(tape, P, A){ const ax=tape.a.x*A, ay=tape.a.y, ux=(tape.b.x-tape.
 function fromRel(tape, r, A){ const ax=tape.a.x*A, ay=tape.a.y, ux=(tape.b.x-tape.a.x)*A, uy=tape.b.y-tape.a.y, L=Math.hypot(ux,uy)||1, ex=ux/L, ey=uy/L; return {x:(ax+ex*r.t*L-ey*r.o*L)/A, y:ay+ey*r.t*L+ex*r.o*L}; }
 function perpTo(L, tape, A){ const nx=(tape.b.x-tape.a.x)*A, ny=tape.b.y-tape.a.y, nl=Math.hypot(nx,ny)||1, mx=(L.a.x+L.b.x)/2, my=(L.a.y+L.b.y)/2; return Math.abs((-ny*(mx-tape.a.x)*A + nx*(my-tape.a.y))/nl); }
 const plainLine = ln => { const {_a,_b,_tape,...rest}=ln; return rest; };
-function alignLines(){
-  if (!S.settings.det.autoAlign){ S.lines.forEach(l=>{ l._a=l._b=l._tape=null; }); LW.lock=null; return; }
+function alignLines(force){
+  if (!force && !S.settings.det.autoAlign){ LW.lock=true; return; }   // follow switched off: keep the line where it was locked
   const A=VW()/VH(); let locked=0;
   for (const ln of S.lines){
     const cur=lineOf(ln); let r=findTape(video, VW(), VH(), ln._tape || cur); if (!r) continue;
@@ -1839,7 +1853,7 @@ function renderGates(force){
 }
 function renderHud(){
   const st=Sig.state, c = st==='R'?'var(--red)':st==='Y'?'var(--sun)':'var(--green)';
-  $('#hud').innerHTML = (S.mode==='live' && (Cam.on)) ? `<span class="hp" style="--c:${c}"><i></i>${st==='R'?'RED':st==='Y'?'YELLOW':'GREEN'} · ${Sig.remain}s</span>${Mic.on?`<span class="hp" style="--c:var(--lilac)"><i></i>${Math.round(Mic.dbS)} dB</span>`:''}${Hold.on?`<span class="hp" style="--c:var(--red)"><i></i>Holding RED · gate closed</span>`:''}${LW.lock===true?`<span class="hp" style="--c:var(--green)"><i></i>Line locked to tape</span>`:LW.lock===false?`<span class="hp" style="--c:var(--sun)"><i></i>Looking for the tape…</span>`:''}` : '';
+  $('#hud').innerHTML = (S.mode==='live' && (Cam.on)) ? `<span class="hp" style="--c:${c}"><i></i>${st==='R'?'RED':st==='Y'?'YELLOW':'GREEN'} · ${Sig.remain}s</span>${Mic.on?`<span class="hp" style="--c:var(--lilac)"><i></i>${Math.round(Mic.dbS)} dB</span>`:''}${Hold.on?`<span class="hp" style="--c:var(--red)"><i></i>Holding RED · gate closed</span>`:''}${Cal.state==='locked'?`<span class="hp" style="--c:var(--blue)"><i></i>🔒 Line locked · watching vehicles</span>`:Cal.state==='search'?`<span class="hp" style="--c:var(--sun)"><i></i>Camera moved – finding the line…</span>`:Cal.state==='calib'?`<span class="hp" style="--c:var(--sun)"><i></i>Calibrating…</span>`:''}` : '';
 }
 
 /* =====================================================================
@@ -2030,7 +2044,8 @@ function drawOverlay(t){
   const W=ov.width, H=ov.height, sc=W/640; octx.clearRect(0,0,W,H);
   if (!Cam.on) return;
   const showLines = S.mode==='live' || S.step==='line';
-  if (showLines) S.lines.forEach(l0 => { const l={...lineOf(l0), name:l0.name}; drawLine(octx, {x:l.a.x*W, y:l.a.y*H}, {x:l.b.x*W, y:l.b.y*H}, S.mode==='live' ? (Sig.state==='R'?'#F04A5A':Sig.state==='Y'?'#E0A800':'#22B573') : '#3D6BFF', l.name, sc, S.mode==='live'); });
+  const calCol = Cal.state==='calib' ? '#FFB020' : Cal.state==='found' ? '#22B573' : Cal.state==='search' ? '#8B95B2' : null;
+  if (showLines && !(S.mode==='live' && Cal.state==='calib' && !S.lines.some(l=>l._tape))) S.lines.forEach(l0 => { const l={...lineOf(l0), name:l0.name}; drawLine(octx, {x:l.a.x*W, y:l.a.y*H}, {x:l.b.x*W, y:l.b.y*H}, S.mode==='live' ? (calCol || (Sig.state==='R'?'#F04A5A':Sig.state==='Y'?'#E0A800':'#22B573')) : '#3D6BFF', l.name, sc, S.mode==='live'); });
   if (S.mode==='live'){
     octx.save(); octx.setLineDash([5*sc,5*sc]); octx.lineWidth=1.5*sc; octx.strokeStyle='rgba(98,107,137,.55)'; octx.fillStyle='rgba(98,107,137,.10)';
     S.ignore.forEach(z=>{ octx.fillRect(z.x*W,z.y*H,z.w*W,z.h*H); octx.strokeRect(z.x*W,z.y*H,z.w*W,z.h*H); }); octx.restore();
@@ -2043,14 +2058,64 @@ function drawOverlay(t){
     }
   }
 }
+/* =====================================================================
+   LIVE CALIBRATION
+   camera on → find the stop line on the tape (vehicles are NOT detected yet)
+   → line steady → "Lock line & start" → vehicles are detected, the line keeps following the tape
+   ===================================================================== */
+const Cal = { state:'idle', hist:[], t0:0, lostT:0, prog:0 };
+function startCalibration(){
+  if (S.mode!=='live' || !Cam.on){ Cal.state='idle'; renderCal(); return; }
+  tracks=[]; Hold.on=false; LW.base={};
+  if (!S.lines.length){ Cal.state='noline'; renderCal(); return; }
+  S.lines.forEach(l=>{ l._tape=null; });
+  Object.assign(Cal, {state:'calib', hist:[], t0:performance.now(), lostT:0, prog:0}); renderCal();
+}
+function lockLine(){
+  Cal.state='locked'; tracks=[]; LW.base={}; renderCal();
+  logEv('🔒 Stop line locked – the AI is now watching for vehicles', 'var(--blue)'); toast('🔒 Line locked – vehicle detection started', 'ok');
+}
+function calStep(t){
+  if (Cal.state==='calib'){
+    alignLines(true);
+    const ln=S.lines[0], L=ln._tape ? lineOf(ln) : null;
+    Cal.hist.push(L ? {x:(L.a.x+L.b.x)/2, y:(L.a.y+L.b.y)/2, ang:Math.atan2(L.b.y-L.a.y, L.b.x-L.a.x)} : null); if (Cal.hist.length>8) Cal.hist.shift();
+    const ok=Cal.hist.filter(Boolean), last=ok[ok.length-1];
+    const steady = last ? ok.filter(h=>Math.hypot(h.x-last.x, h.y-last.y)<.02 && Math.abs(h.ang-last.ang)<.06).length : 0;
+    Cal.prog = Math.min(1, steady/6);
+    if (steady>=6){ Cal.state='found'; logEv('✅ Stop line found on the tape', 'var(--green)'); }
+    else if (t-Cal.t0>12000) Cal.state='failed';
+    renderCal();
+  } else if (Cal.state==='found'){ alignLines(true); }
+  else if (Cal.state==='locked' || Cal.state==='search'){
+    alignLines(false);
+    if (LW.lock){ Cal.lostT=0; if (Cal.state==='search'){ Cal.state='locked'; tracks.forEach(tr=>{ tr.side={}; }); LW.base={}; logEv('🎯 Found the stop line again', 'var(--green)'); renderCal(); } }
+    else { if (!Cal.lostT) Cal.lostT=t; if (Cal.state==='locked' && t-Cal.lostT>2000){ Cal.state='search'; logEv('📷 Camera moved – finding the stop line again…', 'var(--sun)'); renderCal(); } }
+  }
+}
+const detecting = () => Cal.state==='locked' || Cal.state==='noline-go';
+function renderCal(){
+  const el=$('#calib'), st=Cal.state; if (!el) return;
+  const pct=Math.round(Cal.prog*100);
+  const box = {
+    calib:`<div class="calring" style="--p:${pct}"><span>${pct}%</span></div><div><b>Calibrating the stop line…</b><p>Keep the camera still. Vehicles will be detected after the line is locked.</p></div>`,
+    found:`<div class="calok">✓</div><div><b>Stop line found!</b><p>Check that the line sits on the tape, then lock it.</p><div class="row" style="margin-top:10px"><button class="btn green" data-act="lockLine">🔒 Lock line &amp; start</button><button class="btn sm" data-act="recal">↻ Recalibrate</button></div></div>`,
+    failed:`<div class="calok bad">!</div><div><b>Can't find the black tape</b><p>Make sure the camera can see the whole tape, with good light.</p><div class="row" style="margin-top:10px"><button class="btn sun" data-act="recal">↻ Try again</button><button class="btn sm" data-act="useSaved">Use the saved line</button></div></div>`,
+    noline:`<div class="calok bad">!</div><div><b>No stop line saved yet</b><p>Draw one in Training → Road line, or watch vehicles without a line.</p><div class="row" style="margin-top:10px"><button class="btn blue" data-act="goLine">Draw a line</button><button class="btn sm" data-act="noLineGo">Start without a line</button></div></div>`
+  }[st];
+  el.classList.toggle('hidden', !box || S.mode!=='live' || !Cam.on);
+  if (box) el.innerHTML = box;
+  const rb=$('#recalBtn'); if (rb) rb.classList.toggle('hidden', !(st==='locked' || st==='search'));
+  renderHud();
+}
 function loop(t){
   requestAnimationFrame(loop);
-  if (S.mode==='live' && Cam.on && MP.ready && video.readyState>=2 && t-lastDetT>70){   // detection runs only in Live mode
+  const live = S.mode==='live' && Cam.on && video.readyState>=2;
+  if (live && t-(LW.alignT||0)>250){ LW.alignT=t; try{ calStep(t); }catch(e){ console.warn(e); } }
+  if (live && Cal.state==='search') holdStep(t);   // keep a red-light hold going while the line is found again
+  if (live && detecting() && MP.ready && t-lastDetT>70){   // vehicles are only detected after the line is locked
     lastDetT=t;
-    try{
-      if (BgLearn.until) bgStep(t); else { updateTracks(detect(video), t); lineWatch(t); }
-      if (t-(LW.alignT||0)>400){ LW.alignT=t; alignLines(); }
-    } catch(e){ console.warn(e); }
+    try{ if (BgLearn.until) bgStep(t); else { updateTracks(detect(video), t); lineWatch(t); } } catch(e){ console.warn(e); }
   }
   drawOverlay(t);
 }
@@ -2239,7 +2304,7 @@ function setMode(m){
   $$('#modes button').forEach(b=>b.setAttribute('aria-selected', b.dataset.mode===m));
   movePill(); $$('.view').forEach(v=>v.classList.toggle('on', v.id==='v-'+m));
   (m==='live' ? $('#liveSlot') : $('#trainSlot')).append($('#stage'));
-  if (m==='live'){ closeFreeze(); tracks=[]; } trainDets=[];
+  if (m==='live'){ closeFreeze(); tracks=[]; startCalibration(); } else { Cal.state='idle'; renderCal(); } trainDets=[];
   renderHud(); renderSignal(false);
   if (m==='live' && Brain.v.stale && S.vSamples.length && S.algo.v==='nn') toast('Tip: you added new data – train the AI again for best results.', 'warn');
 }
@@ -2292,7 +2357,12 @@ document.addEventListener('click', async e => {
     case 'addS': addClass('s'); break;
     case 'delV': { const c=clsById('v',id); if (!confirm(`Delete “${c.name}” and all its photos?`)) return; S.vClasses=S.vClasses.filter(x=>x.id!==id); S.vSamples.filter(s=>s.cls===id).forEach(s=>DB.del('vehicles',s.id)); S.vSamples=S.vSamples.filter(s=>s.cls!==id); Brain.v.stale=true; saveMeta(); renderV(); renderCounts(); break; }
     case 'capture': capturePhoto(); break;
-    case 'learnBg': learnBackground(); break;
+    case 'learnBg': if (!detecting()){ toast('Lock the stop line first 🔒'); return; } learnBackground(); break;
+    case 'lockLine': lockLine(); break;
+    case 'recal': startCalibration(); toast('Calibrating the stop line again…'); break;
+    case 'useSaved': S.lines.forEach(l=>{ l._a=l._b=l._tape=null; }); lockLine(); break;
+    case 'goLine': setMode('train'); setStep('line'); break;
+    case 'noLineGo': Cal.state='noline-go'; renderCal(); logEv('▶️ Watching vehicles without a stop line', 'var(--blue)'); break;
     case 'clearBg': S.ignore=[]; DB.kv('ignore', S.ignore); renderIgnore(); toast('Ignored spots forgotten'); break;
     case 'cropUse': { if (Crop.box){ const targets = $('#cropAll').checked ? S.pending.filter(p=>p.sel||p===Crop.p) : [Crop.p]; targets.forEach(p=>p.box={...Crop.box}); } else Crop.p.box=null; savePending(); renderTray(); $('#cropScrim').classList.remove('on'); break; }
     case 'cropClear': Crop.box=null; drawCrop(); break;
