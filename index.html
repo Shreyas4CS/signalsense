@@ -878,11 +878,12 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
         <div class="step" id="st-line">
           <h3>Step 2 · Mark the stop line</h3>
           <p class="hint">If any vehicle crosses this line on red, the AI notices and your rules kick in.</p>
-          <div class="howto">🛣️<div><b>1.</b> Point the camera at your road. <b>2.</b> Press <b>Take road photo</b>. <b>3.</b> Tap <b>two points</b> where the line is. <b>4.</b> Name it and press <b>Save line</b>.</div></div>
+          <div class="howto">🛣️<div><b>1.</b> Point the camera at your road. <b>2.</b> Press <b>Take road photo</b> – the app finds the black tape and puts the line on it ✨. <b>3.</b> Not right? Tap <b>two points</b> near the tape and it snaps on. <b>4.</b> Name it and press <b>Save line</b>. In Live mode the line keeps following the tape.</div></div>
           <div class="row" style="margin-bottom:12px">
             <button class="btn blue" data-act="snapRoad"><svg><use href="#i-snap"/></svg>Take road photo</button>
             <label class="btn"><svg><use href="#i-up"/></svg>Upload photo<input type="file" accept="image/*" hidden id="roadUp"></label>
             <button class="btn" data-act="clearPts">Redo points</button>
+            <button class="btn sun" data-act="findLine">✨ Find tape line</button>
           </div>
           <div class="row">
             <input type="text" id="lineName" class="grow" value="Stop line" maxlength="24">
@@ -1067,6 +1068,7 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
           <div class="field" style="--c:var(--blue)"><label><i></i>Match strictness</label><input type="range" min="20" max="95" data-set="det.simThresh" style="--c:var(--blue)"><span class="val"></span></div>
           <p class="hint">Higher = the AI only names a vehicle when it is very sure; otherwise it shows “not trained”. Lower it if your new toys are not being named.</p>
           <div class="field" style="--c:var(--blue)"><label><i></i>Max vehicles tracked</label><input type="range" min="1" max="10" data-set="det.maxBoxes" style="--c:var(--blue)"><span class="val"></span></div>
+          <div class="field" style="grid-template-columns:1fr auto"><label style="font-size:15px">Stop line follows the black tape automatically (if the camera moves a little)</label><span class="switch"><input type="checkbox" data-set="det.autoAlign"><span></span></span></div>
           <div class="field" style="grid-template-columns:1fr auto"><label style="font-size:15px">Box any object (good for toys), not only real-vehicle shapes</label><span class="switch"><input type="checkbox" data-set="det.anyObject"><span></span></span></div>
         </div>
       </div>
@@ -1144,7 +1146,7 @@ function defaultSettings(){
       {name:'Cross gate', open:90, close:0, mode:'reverse'}
     ],
     sound:{calib:100, gate:50},
-    det:{minScore:35, simThresh:55, maxBoxes:5, anyObject:true}
+    det:{minScore:35, simThresh:55, maxBoxes:5, anyObject:true, autoAlign:true}
   };
 }
 function defaultRules(){
@@ -1390,7 +1392,7 @@ function bgStep(t){
   const W=VW(), H=VH(); BgLearn.frames++;
   for (const d of detect(video, true)){ const z={x:d.x/W, y:d.y/H, w:d.w/W, h:d.h/H}; const m=BgLearn.seen.find(o=>iou(o,z)>.3); if (m){ m.n++; } else BgLearn.seen.push({...z, n:1}); }
   if (t >= BgLearn.until){
-    BgLearn.until=0;
+    BgLearn.until=0; LW.base={};
     const add = BgLearn.seen.filter(z=>z.n >= Math.max(2, BgLearn.frames*.15)).map(({x,y,w,h})=>({x,y,w,h}));
     S.ignore = [...S.ignore, ...add.filter(z=>S.ignore.every(o=>iou(o,z)<.5))]; DB.kv('ignore', S.ignore); renderIgnore();
     const b=$('[data-act="learnBg"]'); b.disabled=false; b.innerHTML=icon('i-road')+'Learn empty road';
@@ -1517,11 +1519,89 @@ function fileToImg(f){ return new Promise((res,rej)=>{ const i=new Image(); i.on
 /* =====================================================================
    TRAINING · ROAD LINE
    ===================================================================== */
+/* ---- find the dark tape on the road: the longest thin dark strip in the picture ---- */
+const tapeC = document.createElement('canvas'), tapeX = tapeC.getContext('2d', {willReadFrequently:true});
+function findTape(src, sw, sh, hint){
+  const W=200, H=Math.max(40, Math.round(W*sh/sw)); tapeC.width=W; tapeC.height=H; tapeX.drawImage(src,0,0,W,H);
+  const px=tapeX.getImageData(0,0,W,H).data, N=W*H, g=new Uint8Array(N), hist=new Uint32Array(256); let mean=0;
+  for (let i=0;i<N;i++){ const v=(px[i*4]*.3+px[i*4+1]*.59+px[i*4+2]*.11)|0; g[i]=v; hist[v]++; mean+=v/N; }
+  // Otsu threshold, but never call "mid-grey" dark
+  let sum=0; for (let i=0;i<256;i++) sum+=i*hist[i]; let sB=0,wB=0,best=0,T=80;
+  for (let i=0;i<256;i++){ wB+=hist[i]; if(!wB) continue; const wF=N-wB; if(!wF) break; sB+=i*hist[i]; const mB=sB/wB, mF=(sum-sB)/wF, v=wB*wF*(mB-mF)**2; if (v>best){ best=v; T=i; } }
+  T = Math.min(T, mean*.72);
+  const lab=new Int32Array(N).fill(-1), comps=[], stack=new Int32Array(N);
+  for (let i=0;i<N;i++){ if (g[i]>=T || lab[i]>=0) continue;
+    const id=comps.length; let sp=0, n=0, sx=0, sy=0, sxx=0, syy=0, sxy=0; stack[sp++]=i; lab[i]=id;
+    while (sp){ const k=stack[--sp], x=k%W, y=(k/W)|0; n++; sx+=x; sy+=y; sxx+=x*x; syy+=y*y; sxy+=x*y;
+      if (x>0 && lab[k-1]<0 && g[k-1]<T){ lab[k-1]=id; stack[sp++]=k-1; } if (x<W-1 && lab[k+1]<0 && g[k+1]<T){ lab[k+1]=id; stack[sp++]=k+1; }
+      if (y>0 && lab[k-W]<0 && g[k-W]<T){ lab[k-W]=id; stack[sp++]=k-W; } if (y<H-1 && lab[k+W]<0 && g[k+W]<T){ lab[k+W]=id; stack[sp++]=k+W; } }
+    comps.push({n, sx, sy, sxx, syy, sxy}); }
+  let pick=null, ps=0;
+  for (const [id,c] of comps.entries()){ if (c.n < N*.003) continue;
+    const mx=c.sx/c.n, my=c.sy/c.n, a=c.sxx/c.n-mx*mx, b=c.sxy/c.n-mx*my, d=c.syy/c.n-my*my, tr=(a+d)/2, det=Math.sqrt(Math.max(0,tr*tr-(a*d-b*b))), l1=tr+det, l2=Math.max(tr-det,1e-3);
+    const elong=Math.sqrt(l1/l2), len=Math.sqrt(12*l1); if (elong<3.5 || len<W*.2) continue;
+    const ang=.5*Math.atan2(2*b, a-d); let score=len*Math.min(elong,15);
+    if (hint){ const hx=(hint.a.x+hint.b.x)/2*W, hy=(hint.a.y+hint.b.y)/2*H, ha=Math.atan2((hint.b.y-hint.a.y)*H,(hint.b.x-hint.a.x)*W);
+      const dist=Math.abs(-Math.sin(ang)*(hx-mx)+Math.cos(ang)*(hy-my)); let da=Math.abs(ang-ha)%Math.PI; da=Math.min(da, Math.PI-da);
+      score /= (1 + dist/(H*.06) + da*4); }
+    if (score>ps){ ps=score; pick={id, mx, my, ang}; } }
+  if (!pick) return null;
+  const ux=Math.cos(pick.ang), uy=Math.sin(pick.ang); let t0=1e9, t1=-1e9;
+  for (let i=0;i<N;i++){ if (lab[i]!==pick.id) continue; const t=(i%W-pick.mx)*ux+(((i/W)|0)-pick.my)*uy; if (t<t0) t0=t; if (t>t1) t1=t; }
+  let a={x:(pick.mx+ux*t0)/W, y:(pick.my+uy*t0)/H}, b={x:(pick.mx+ux*t1)/W, y:(pick.my+uy*t1)/H};
+  if (a.x>b.x) [a,b]=[b,a];
+  return {a, b};
+}
+/* the line used right now (follows the tape live if "auto-align" is on) */
+const lineOf = ln => ({a: ln._a || ln.a, b: ln._b || ln.b});
+function alignLines(){
+  if (!S.settings.det.autoAlign) { S.lines.forEach(l=>{ l._a=l._b=null; }); return; }
+  for (const ln of S.lines){
+    const r = findTape(video, VW(), VH(), ln); if (!r) continue;
+    const A=VW()/VH(), sv={x:(ln.b.x-ln.a.x)*A, y:ln.b.y-ln.a.y}, nv={x:(r.b.x-r.a.x)*A, y:r.b.y-r.a.y};
+    const sl=Math.hypot(sv.x,sv.y)||1, nl=Math.hypot(nv.x,nv.y)||1, cos=Math.abs((sv.x*nv.x+sv.y*nv.y)/(sl*nl));
+    const mx=(ln.a.x+ln.b.x)/2, my=(ln.a.y+ln.b.y)/2, rmx=(r.a.x+r.b.x)/2, rmy=(r.a.y+r.b.y)/2;
+    const perp=Math.abs((-nv.y*(mx-rmx)*A + nv.x*(my-rmy))/nl);
+    if (cos < .94 || perp > .18) continue;                     // too different – probably not our tape
+    // keep the saved length, move it onto the tape
+    let ux=nv.x/nl, uy=nv.y/nl; if (ux*sv.x+uy*sv.y<0){ ux=-ux; uy=-uy; }
+    const tC=((mx-rmx)*A*ux+(my-rmy)*uy), cx=rmx+ux*tC/A, cy=rmy+uy*tC, h=sl/2;
+    const na={x:cx-ux*h/A, y:cy-uy*h}, nb={x:cx+ux*h/A, y:cy+uy*h}, cur=lineOf(ln), k=.5;
+    const moved = Math.hypot(na.x-cur.a.x, na.y-cur.a.y) > .01;
+    ln._a={x:cur.a.x+(na.x-cur.a.x)*k, y:cur.a.y+(na.y-cur.a.y)*k}; ln._b={x:cur.b.x+(nb.x-cur.b.x)*k, y:cur.b.y+(nb.y-cur.b.y)*k};
+    if (moved) delete LW.base[ln.id];
+  }
+}
+/* line watcher: notices when something covers the stop line (works even if the AI loses the box for a moment) */
+const LW = { c:document.createElement('canvas'), base:{}, run:{} };
+function lineWatch(t){
+  if (!S.lines.length) return;
+  const W=192, H=Math.round(W*VH()/VW()), c=LW.c; c.width=W; c.height=H; const x=c.getContext('2d',{willReadFrequently:true}); x.drawImage(video,0,0,W,H);
+  const img=x.getImageData(0,0,W,H).data, NS=48;
+  for (const ln of S.lines){
+    const L=lineOf(ln), cur=new Float32Array(NS*3);
+    for (let i=0;i<NS;i++){ const f=(i+.5)/NS, X=clamp(Math.round((L.a.x+(L.b.x-L.a.x)*f)*W),0,W-1), Y=clamp(Math.round((L.a.y+(L.b.y-L.a.y)*f)*H),0,H-1), k=(Y*W+X)*4; cur[i*3]=img[k]; cur[i*3+1]=img[k+1]; cur[i*3+2]=img[k+2]; }
+    const base=LW.base[ln.id]; if (!base){ LW.base[ln.id]=cur; LW.run[ln.id]=0; continue; }
+    let changed=0; for (let i=0;i<NS;i++){ const d=Math.abs(cur[i*3]-base[i*3])+Math.abs(cur[i*3+1]-base[i*3+1])+Math.abs(cur[i*3+2]-base[i*3+2]);
+      if (d>70) changed++; else for (let j=0;j<3;j++) base[i*3+j]+= (cur[i*3+j]-base[i*3+j])*.05; }
+    const occ = changed/NS > .12; LW.run[ln.id] = occ ? (LW.run[ln.id]||0)+1 : 0;
+    if (LW.run[ln.id]===3){   // covered for 3 frames in a row → find the vehicle that is there
+      const VWp=VW(), VHp=VH(); let near=null, nd=VHp*.25;
+      for (const tr of tracks){ if (tr.missed>30) continue; const ax=L.a.x*VWp, ay=L.a.y*VHp, bx=L.b.x*VWp, by=L.b.y*VHp, len=Math.hypot(bx-ax,by-ay)||1;
+        const dd=Math.abs(((bx-ax)*(tr.cy-ay)-(by-ay)*(tr.cx-ax))/len); if (dd<nd){ nd=dd; near=tr; } }
+      if (near && !near.crossT[ln.id]){ near.crossT[ln.id]=t; onCross(near, ln, t); }
+    }
+  }
+}
+
 const LineEd = { active:false, pts:[], snap:null };
 function openFreeze(drawFn, w, h){
   freeze.width=w; freeze.height=h; LineEd.snap = document.createElement('canvas'); LineEd.snap.width=w; LineEd.snap.height=h;
   drawFn(LineEd.snap.getContext('2d')); LineEd.pts=[]; LineEd.active=true;
-  freeze.classList.remove('hide'); $('#stage').style.aspectRatio=`${w}/${h}`; drawFreeze(); camUI();
+  freeze.classList.remove('hide'); $('#stage').style.aspectRatio=`${w}/${h}`;
+  const r = findTape(LineEd.snap, w, h, null);
+  if (r){ LineEd.pts=[r.a, r.b]; toast('✨ Found the tape – the line is placed on it. Tap two points to change it.', 'ok'); }
+  drawFreeze(); camUI();
 }
 function closeFreeze(){ LineEd.active=false; LineEd.pts=[]; freeze.classList.add('hide'); $('#linehelp').classList.add('hide'); $('#saveLineBtn').disabled=true; if (Cam.on) $('#stage').style.aspectRatio=`${VW()}/${VH()}`; camUI(); }
 function drawFreeze(){
@@ -1537,7 +1617,14 @@ function drawFreeze(){
 freeze.addEventListener('pointerdown', e => {
   if (!LineEd.active) return; const r = freeze.getBoundingClientRect();
   const p = {x:clamp((e.clientX-r.left)/r.width,0,1), y:clamp((e.clientY-r.top)/r.height,0,1)};
-  if (LineEd.pts.length>=2) LineEd.pts=[]; LineEd.pts.push(p); drawFreeze();
+  if (LineEd.pts.length>=2) LineEd.pts=[]; LineEd.pts.push(p);
+  if (LineEd.pts.length===2){   // snap the two taps onto the tape if there is one nearby
+    const r = findTape(LineEd.snap, freeze.width, freeze.height, {a:LineEd.pts[0], b:LineEd.pts[1]});
+    if (r){ const A=freeze.width/freeze.height, dx=(r.b.x-r.a.x)*A, dy=r.b.y-r.a.y, l=Math.hypot(dx,dy)||1, m={x:(LineEd.pts[0].x+LineEd.pts[1].x)/2, y:(LineEd.pts[0].y+LineEd.pts[1].y)/2};
+      const dist=Math.abs((-dy*(m.x-r.a.x)*A + dx*(m.y-r.a.y))/l);
+      if (dist < .12){ LineEd.pts=[r.a, r.b]; toast('✨ Snapped to the tape', 'ok'); } }
+  }
+  drawFreeze();
 });
 $('#lineName').addEventListener('input', ()=>LineEd.active && drawFreeze());
 $('#roadUp').addEventListener('change', async e => { const f=e.target.files[0]; e.target.value=''; if(!f) return; const img=await fileToImg(f); const w=Cam.on?VW():img.naturalWidth, h=Cam.on?VH():img.naturalHeight; openFreeze(c=>c.drawImage(img,0,0,w,h), w, h); });
@@ -1742,13 +1829,15 @@ const Stats = {now:0, cross:0, viol:0, honk:0, add:0};
 function setStat(k, v){ Stats[k]=v; const el=$('#st'+k[0].toUpperCase()+k.slice(1)); const t = k==='add' ? v+'s' : String(v); if (el.textContent!==t){ el.textContent=t; el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); } }
 
 function updateTracks(dets, t){
-  const W=VW(), H=VH(), maxD=Math.max(W,H)*.2, D=S.settings.det;
+  const W=VW(), H=VH(), D=S.settings.det;
   tracks.forEach(tr=>tr.matched=false);
   for (const d of dets.slice(0, D.maxBoxes)){
-    const cx=d.x+d.w/2, cy=d.y+d.h/2; let best=null, bd=maxD;
-    for (const tr of tracks){ if (tr.matched) continue; const dd=Math.hypot(tr.cx-cx, tr.cy-cy); if (dd<bd){ bd=dd; best=tr; } }
+    const cx=d.x+d.w/2, cy=d.y+d.h/2; let best=null, bd=1e9;
+    // a car the AI lost for a moment (e.g. on the dark tape) may be found again a bit further away
+    for (const tr of tracks){ if (tr.matched) continue; const dd=Math.hypot(tr.cx-cx, tr.cy-cy), lim=Math.max(W,H)*(tr.missed>0?.32:.2); if (dd<lim && dd<bd){ bd=dd; best=tr; } }
+    const wasLost = best ? best.missed>0 : false;
     if (!best){ best={id:++trackSeq, side:{}, crossT:{}, label:null, conf:0, lastCls:-1e9, seen:0, flash:0}; tracks.push(best); }
-    else if (bd > Math.max(W,H)*.09) best.side={};   // jumped too far: probably a different object, start fresh
+    else if (!wasLost && bd > Math.max(W,H)*.12) best.side={};   // jumped too far in one frame: probably a different object
     Object.assign(best, {x:d.x, y:d.y, w:d.w, h:d.h, cx, cy, cat:d.cat, score:d.score, matched:true, missed:0}); best.seen++;
     // ask the vehicle brain what this box is (twice a second per vehicle)
     if (S.vSamples.length && t-best.lastCls>500){
@@ -1761,18 +1850,18 @@ function updateTracks(dets, t){
     }
     // line crossing test using the bottom-centre of the box (where wheels touch the road)
     // a small "dead zone" around the line stops wobbling boxes from counting as crossings
-    const px=cx, py=d.y+d.h, margin=H*.03;
-    for (const ln of S.lines){
-      const ax=ln.a.x*W, ay=ln.a.y*H, bx=ln.b.x*W, by=ln.b.y*H, L2=(bx-ax)**2+(by-ay)**2 || 1, len=Math.sqrt(L2);
+    const px=cx, py=cy, margin=H*.03;   // centre of the vehicle
+    for (const ln0 of S.lines){
+      const ln=ln0, L=lineOf(ln), ax=L.a.x*W, ay=L.a.y*H, bx=L.b.x*W, by=L.b.y*H, L2=(bx-ax)**2+(by-ay)**2 || 1, len=Math.sqrt(L2);
       const dist=((bx-ax)*(py-ay)-(by-ay)*(px-ax))/len, tp=((px-ax)*(bx-ax)+(py-ay)*(by-ay))/L2, prev=best.side[ln.id];
       const side = dist>margin ? 1 : dist<-margin ? -1 : 0;
       if (side!==0 && tp>-.05 && tp<1.05){
-        if (prev && prev!==side && best.seen>3 && t-(best.crossT[ln.id]||-1e9)>2500){ best.crossT[ln.id]=t; onCross(best, ln, t); }
+        if (prev && prev!==side && best.seen>2 && !best.crossT[ln.id]){ best.crossT[ln.id]=t; onCross(best, ln, t); }
         best.side[ln.id]=side;
       }
     }
   }
-  tracks = tracks.filter(tr=>{ if (!tr.matched) tr.missed=(tr.missed||0)+1; return tr.missed<10; });
+  tracks = tracks.filter(tr=>{ if (!tr.matched) tr.missed=(tr.missed||0)+1; return tr.missed<40; });
   const n = tracks.filter(tr=>tr.missed===0).length; if (n!==Stats.now) setStat('now', n);
   fire('count', {n});
 }
@@ -1854,7 +1943,7 @@ function drawOverlay(t){
   const W=ov.width, H=ov.height, sc=W/640; octx.clearRect(0,0,W,H);
   if (!Cam.on) return;
   const showLines = S.mode==='live' || S.step==='line';
-  if (showLines) S.lines.forEach(l => drawLine(octx, {x:l.a.x*W, y:l.a.y*H}, {x:l.b.x*W, y:l.b.y*H}, S.mode==='live' ? (Sig.state==='R'?'#F04A5A':Sig.state==='Y'?'#E0A800':'#22B573') : '#3D6BFF', l.name, sc, S.mode==='live'));
+  if (showLines) S.lines.forEach(l0 => { const l={...lineOf(l0), name:l0.name}; drawLine(octx, {x:l.a.x*W, y:l.a.y*H}, {x:l.b.x*W, y:l.b.y*H}, S.mode==='live' ? (Sig.state==='R'?'#F04A5A':Sig.state==='Y'?'#E0A800':'#22B573') : '#3D6BFF', l.name, sc, S.mode==='live'); });
   if (S.mode==='live'){
     octx.save(); octx.setLineDash([5*sc,5*sc]); octx.lineWidth=1.5*sc; octx.strokeStyle='rgba(98,107,137,.55)'; octx.fillStyle='rgba(98,107,137,.10)';
     S.ignore.forEach(z=>{ octx.fillRect(z.x*W,z.y*H,z.w*W,z.h*H); octx.strokeRect(z.x*W,z.y*H,z.w*W,z.h*H); }); octx.restore();
@@ -1872,7 +1961,8 @@ function loop(t){
   if (S.mode==='live' && Cam.on && MP.ready && video.readyState>=2 && t-lastDetT>70){   // detection runs only in Live mode
     lastDetT=t;
     try{
-      if (BgLearn.until) bgStep(t); else updateTracks(detect(video), t);
+      if (BgLearn.until) bgStep(t); else { updateTracks(detect(video), t); lineWatch(t); }
+      if (t-(LW.alignT||0)>800){ LW.alignT=t; alignLines(); }
     } catch(e){ console.warn(e); }
   }
   drawOverlay(t);
@@ -2111,6 +2201,7 @@ document.addEventListener('click', async e => {
     case 'delS': { const c=clsById('s',id); if (!confirm(`Delete “${c.name}” and all its clips?`)) return; S.sClasses=S.sClasses.filter(x=>x.id!==id); S.sSamples.filter(s=>s.cls===id).forEach(s=>DB.del('sounds',s.id)); S.sSamples=S.sSamples.filter(s=>s.cls!==id); Brain.s.stale=true; saveMeta(); renderS(); renderCounts(); break; }
     case 'undoS': { const last=[...S.sSamples].reverse().find(s=>s.cls===id); if (last){ S.sSamples=S.sSamples.filter(s=>s!==last); DB.del('sounds', last.id); Brain.s.stale=true; renderS(); renderCounts(); } break; }
     case 'snapRoad': if (!Cam.on){ toast('Turn the camera on first, or upload a road photo 📷'); return; } openFreeze(c=>c.drawImage(video,0,0,VW(),VH()), VW(), VH()); break;
+    case 'findLine': { if (!LineEd.active){ toast('Take a road photo first'); return; } const r=findTape(LineEd.snap, freeze.width, freeze.height, null); if (r){ LineEd.pts=[r.a,r.b]; drawFreeze(); toast('✨ Line placed on the tape','ok'); } else toast('Could not find a dark tape line – tap two points instead','warn'); break; }
     case 'clearPts': if (LineEd.active){ LineEd.pts=[]; drawFreeze(); } break;
     case 'cancelLine': closeFreeze(); break;
     case 'saveLine': saveLine(); break;
