@@ -563,6 +563,31 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
 .sec h4{font-size:19px;margin:16px 0 2px}
 .sec h4:first-child{margin-top:0}
 
+/* rules drawer (like the reference: WHEN / THEN cards) */
+#rulesScrim{z-index:84}
+.drawer{position:fixed;right:12px;top:12px;bottom:12px;width:min(620px,calc(100% - 24px));background:#fff;border-radius:28px;z-index:85;box-shadow:-30px 0 80px -20px rgba(27,33,64,.4);transform:translateX(112%);transition:transform .45s var(--spring);display:flex;flex-direction:column}
+.drawer.on{transform:none}
+.drawer header{padding:20px 22px 12px;display:flex;align-items:flex-start;gap:12px}
+.drawer header h2{font-size:26px}
+.drawer .body{padding:4px 22px 16px;overflow:auto;flex:1}
+.drawer footer{padding:14px 22px 18px;border-top:1px solid var(--line);display:flex;gap:10px;align-items:center;background:#FAFBFF;border-radius:0 0 28px 28px}
+.drawer .rule{margin-bottom:12px}
+.rule .l{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-weight:700;font-size:14.5px}
+.rule .l+.l{margin-top:10px}
+.rule .l select,.rule .l input{padding:7px 10px;font-size:14px;border-radius:11px}
+.rule .l input[type=number]{width:72px}
+.rule .tag.when{background:var(--ink);color:#fff}
+.rule .tag.then{background:var(--blue);color:#fff}
+.rule .del{margin-left:auto;color:var(--muted);width:32px;height:32px;border-radius:10px;font-size:20px;line-height:1}
+.rule .del:hover{background:var(--red-s);color:var(--red-d)}
+.rule .cool{font-size:12.5px;color:var(--muted);font-weight:600;display:inline-flex;align-items:center;gap:5px;margin-left:auto}
+.rule .cool input{width:58px!important;padding:4px 7px!important}
+.addrule{width:100%;border-style:dashed;margin-top:2px}
+.rulemini{font-size:13.5px;font-weight:700;display:flex;gap:9px;align-items:center;padding:9px 12px;border-radius:12px;background:var(--bg2);transition:all .25s}
+.rulemini i{width:9px;height:9px;border-radius:50%;background:#B9C3D6;flex:none}
+.rulemini.hit{background:var(--red-s);color:var(--red-d)}
+.rulemini.hit i{background:var(--red);animation:blink .45s infinite alternate}
+
 /* toast */
 .toasts{position:fixed;right:24px;bottom:24px;display:flex;flex-direction:column;gap:10px;z-index:90;pointer-events:none}
 .toast{display:flex;align-items:center;gap:10px;background:#fff;border:2px solid var(--line);border-left:6px solid var(--c,var(--blue));border-radius:16px;padding:11px 15px;box-shadow:var(--shadow-lg);font-size:14px;font-weight:600;max-width:400px;animation:tin .45s var(--spring) both}
@@ -982,6 +1007,10 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
           </div>
         </div>
         <div class="card" style="--i:2">
+          <div class="cardhead"><span class="ico" style="--c:var(--red-d);--c-s:var(--red-s)"><svg><use href="#i-rule"/></svg></span><h3>Traffic rules</h3><span class="grow"></span><button class="btn sm" data-act="openRules"><svg><use href="#i-rule"/></svg>Edit rules</button></div>
+          <div id="ruleMini" style="display:flex;flex-direction:column;gap:7px"></div>
+        </div>
+        <div class="card" style="--i:2">
           <div class="cardhead"><span class="ico" style="--c:var(--green-d);--c-s:var(--green-s)"><svg><use href="#i-gate"/></svg></span><h3>Gates (2 servos)</h3></div>
           <div class="gates" id="gates"></div>
         </div>
@@ -1027,7 +1056,6 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
     <div class="stabs" role="tablist">
       <button data-st="time" aria-selected="true"><svg><use href="#i-clock"/></svg>Light timings</button>
       <button data-st="gate" aria-selected="false"><svg><use href="#i-gate"/></svg>Gates</button>
-      <button data-st="rules" aria-selected="false"><svg><use href="#i-rule"/></svg>Rules</button>
       <button data-st="sense" aria-selected="false"><svg><use href="#i-mic"/></svg>Mic &amp; camera</button>
       <button data-st="data" aria-selected="false"><svg><use href="#i-db"/></svg>Data</button>
     </div>
@@ -1044,17 +1072,6 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
       <div class="spane" id="sp-gate">
         <p class="hint" style="margin-bottom:12px"><b>Gate 1</b> follows the signal: open on green/yellow, closed on red. <b>Gate 2</b> does the opposite (or the same, if you choose). Set the servo angles and press Test to try them on the Arduino.</p>
         <div class="gcards" id="gcards"></div>
-      </div>
-      <div class="spane" id="sp-rules">
-        <p class="hint">Rules are “When ___ happens, do ___”. Make your own or start with a ready-made one:</p>
-        <div class="presets">
-          <button style="--c-s:var(--red-s);--c-d:var(--red-d)" data-preset="jump">+ Red-light jumper penalty</button>
-          <button style="--c-s:var(--lilac-s);--c-d:var(--lilac-d)" data-preset="honk">+ Honking penalty</button>
-          <button style="--c-s:var(--green-s);--c-d:var(--green-d)" data-preset="amb">+ Ambulance gets green</button>
-          <button style="--c-s:var(--blue-s);--c-d:var(--blue-d)" data-preset="busy">+ Busy road gets green</button>
-          <button style="--c-s:var(--sun-s);--c-d:var(--sun-d)" data-preset="blank">+ Empty rule</button>
-        </div>
-        <div class="rules" id="rules"></div>
       </div>
       <div class="spane" id="sp-sense">
         <div class="sec">
@@ -1085,6 +1102,24 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
     <footer><span class="hint" style="margin-right:auto" id="setNote">Changes are saved in this browser. Press the button to send them to the Arduino.</span><button class="btn" data-close>Close</button><button class="btn pri" data-act="saveSettings"><svg><use href="#i-check"/></svg>Save &amp; send to Arduino</button></footer>
   </div>
 </div>
+
+<!-- ============ TRAFFIC RULES DRAWER ============ -->
+<div class="scrim" id="rulesScrim"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="rlH">
+  <header><span class="cardhead" style="margin:0"><span class="ico" style="--c:var(--red-d);--c-s:var(--red-s)"><svg><use href="#i-rule"/></svg></span></span><div class="grow"><h2 id="rlH">Traffic rules</h2><p class="hint">Decide what the signal does. Every rule is “WHEN something happens → THEN do this”. All switched-on rules work together.</p></div><button class="iconbtn" data-act="closeRules" aria-label="Close"><svg><use href="#i-x"/></svg></button></header>
+  <div class="body">
+    <div id="ruleList"></div>
+    <button class="btn addrule" data-act="addRule"><svg><use href="#i-plus"/></svg>Add a rule</button>
+    <p class="hint" style="margin:16px 0 6px;font-weight:700">Quick ideas – tap to add:</p>
+    <div class="presets">
+      <button style="--c-s:var(--red-s);--c-d:var(--red-d)" data-preset="jump">🚨 Red-light jumper: hold red</button>
+      <button style="--c-s:var(--lilac-s);--c-d:var(--lilac-d)" data-preset="honk">📢 Honking penalty</button>
+      <button style="--c-s:var(--green-s);--c-d:var(--green-d)" data-preset="amb">🚑 Ambulance gets green</button>
+      <button style="--c-s:var(--blue-s);--c-d:var(--blue-d)" data-preset="busy">🚗 Busy road gets green</button>
+    </div>
+  </div>
+  <footer><button class="btn" data-act="resetRules">Reset to defaults</button><span class="grow"></span><button class="btn" data-act="closeRules">Cancel</button><button class="btn pri" data-act="saveRules"><svg><use href="#i-check"/></svg>Save rules</button></footer>
+</aside>
 
 <!-- crop box -->
 <div class="scrim" id="cropScrim">
@@ -1151,7 +1186,7 @@ function defaultSettings(){
 }
 function defaultRules(){
   return [
-    {id:uid(), on:true,  trigger:'cross', line:'any', when:'R', action:'addRed', sec:5, cool:3},
+    {id:uid(), on:true,  trigger:'cross', line:'any', when:'R', action:'holdRed', sec:1, cool:3},
     {id:uid(), on:true,  trigger:'loud',  db:80,      when:'R', action:'addRed', sec:3, cool:4},
   ];
 }
@@ -1537,40 +1572,56 @@ function findTape(src, sw, sh, hint){
       if (y>0 && lab[k-W]<0 && g[k-W]<T){ lab[k-W]=id; stack[sp++]=k-W; } if (y<H-1 && lab[k+W]<0 && g[k+W]<T){ lab[k+W]=id; stack[sp++]=k+W; } }
     comps.push({n, sx, sy, sxx, syy, sxy}); }
   let pick=null, ps=0;
-  for (const [id,c] of comps.entries()){ if (c.n < N*.003) continue;
+  for (const [id,c] of comps.entries()){ if (c.n < N*.0008) continue;
     const mx=c.sx/c.n, my=c.sy/c.n, a=c.sxx/c.n-mx*mx, b=c.sxy/c.n-mx*my, d=c.syy/c.n-my*my, tr=(a+d)/2, det=Math.sqrt(Math.max(0,tr*tr-(a*d-b*b))), l1=tr+det, l2=Math.max(tr-det,1e-3);
-    const elong=Math.sqrt(l1/l2), len=Math.sqrt(12*l1); if (elong<3.5 || len<W*.2) continue;
-    const ang=.5*Math.atan2(2*b, a-d); let score=len*Math.min(elong,15);
+    const elong=Math.sqrt(l1/l2), len=Math.sqrt(12*l1), ang=.5*Math.atan2(2*b, a-d);
+    Object.assign(c, {mx, my, l2, len, elong, ang});
+    if (c.n < N*.003 || elong<3.5 || len<W*.15) continue;
+    let score=len*Math.min(elong,15);
     if (hint){ const hx=(hint.a.x+hint.b.x)/2*W, hy=(hint.a.y+hint.b.y)/2*H, ha=Math.atan2((hint.b.y-hint.a.y)*H,(hint.b.x-hint.a.x)*W);
       const dist=Math.abs(-Math.sin(ang)*(hx-mx)+Math.cos(ang)*(hy-my)); let da=Math.abs(ang-ha)%Math.PI; da=Math.min(da, Math.PI-da);
       score /= (1 + dist/(H*.06) + da*4); }
-    if (score>ps){ ps=score; pick={id, mx, my, ang}; } }
+    if (score>ps){ ps=score; pick={id, mx, my, ang, l2}; } }
   if (!pick) return null;
   const ux=Math.cos(pick.ang), uy=Math.sin(pick.ang); let t0=1e9, t1=-1e9;
-  for (let i=0;i<N;i++){ if (lab[i]!==pick.id) continue; const t=(i%W-pick.mx)*ux+(((i/W)|0)-pick.my)*uy; if (t<t0) t0=t; if (t>t1) t1=t; }
+  // pieces of the same tape (cut in two by a car on top) lie on the same line – join them
+  const ids=new Set([pick.id]), thick=Math.max(3, 3*Math.sqrt(pick.l2));
+  comps.forEach((c,id)=>{ if (id===pick.id || c.mx===undefined) return; const pd=Math.abs(-uy*(c.mx-pick.mx)+ux*(c.my-pick.my)); let da=Math.abs(c.ang-pick.ang)%Math.PI; da=Math.min(da,Math.PI-da);
+    if (pd<thick && (da<.3 || c.elong<2.5)) ids.add(id); });
+  for (let i=0;i<N;i++){ if (!ids.has(lab[i])) continue; const t=(i%W-pick.mx)*ux+(((i/W)|0)-pick.my)*uy; if (t<t0) t0=t; if (t>t1) t1=t; }
   let a={x:(pick.mx+ux*t0)/W, y:(pick.my+uy*t0)/H}, b={x:(pick.mx+ux*t1)/W, y:(pick.my+uy*t1)/H};
   if (a.x>b.x) [a,b]=[b,a];
   return {a, b};
 }
 /* the line used right now (follows the tape live if "auto-align" is on) */
 const lineOf = ln => ({a: ln._a || ln.a, b: ln._b || ln.b});
+// the stop line is remembered relative to the tape (position along it + distance from it),
+// so if the camera moves, tilts or zooms, the line is rebuilt on the tape wherever it is now
+function relTo(tape, P, A){ const ax=tape.a.x*A, ay=tape.a.y, ux=(tape.b.x-tape.a.x)*A, uy=tape.b.y-tape.a.y, L=Math.hypot(ux,uy)||1, ex=ux/L, ey=uy/L, dx=P.x*A-ax, dy=P.y-ay; return {t:(dx*ex+dy*ey)/L, o:(-dx*ey+dy*ex)/L}; }
+function fromRel(tape, r, A){ const ax=tape.a.x*A, ay=tape.a.y, ux=(tape.b.x-tape.a.x)*A, uy=tape.b.y-tape.a.y, L=Math.hypot(ux,uy)||1, ex=ux/L, ey=uy/L; return {x:(ax+ex*r.t*L-ey*r.o*L)/A, y:ay+ey*r.t*L+ex*r.o*L}; }
+function perpTo(L, tape, A){ const nx=(tape.b.x-tape.a.x)*A, ny=tape.b.y-tape.a.y, nl=Math.hypot(nx,ny)||1, mx=(L.a.x+L.b.x)/2, my=(L.a.y+L.b.y)/2; return Math.abs((-ny*(mx-tape.a.x)*A + nx*(my-tape.a.y))/nl); }
+const plainLine = ln => { const {_a,_b,_tape,...rest}=ln; return rest; };
 function alignLines(){
-  if (!S.settings.det.autoAlign) { S.lines.forEach(l=>{ l._a=l._b=null; }); return; }
+  if (!S.settings.det.autoAlign){ S.lines.forEach(l=>{ l._a=l._b=l._tape=null; }); LW.lock=null; return; }
+  const A=VW()/VH(); let locked=0;
   for (const ln of S.lines){
-    const r = findTape(video, VW(), VH(), ln); if (!r) continue;
-    const A=VW()/VH(), sv={x:(ln.b.x-ln.a.x)*A, y:ln.b.y-ln.a.y}, nv={x:(r.b.x-r.a.x)*A, y:r.b.y-r.a.y};
-    const sl=Math.hypot(sv.x,sv.y)||1, nl=Math.hypot(nv.x,nv.y)||1, cos=Math.abs((sv.x*nv.x+sv.y*nv.y)/(sl*nl));
-    const mx=(ln.a.x+ln.b.x)/2, my=(ln.a.y+ln.b.y)/2, rmx=(r.a.x+r.b.x)/2, rmy=(r.a.y+r.b.y)/2;
-    const perp=Math.abs((-nv.y*(mx-rmx)*A + nv.x*(my-rmy))/nl);
-    if (cos < .94 || perp > .18) continue;                     // too different – probably not our tape
-    // keep the saved length, move it onto the tape
-    let ux=nv.x/nl, uy=nv.y/nl; if (ux*sv.x+uy*sv.y<0){ ux=-ux; uy=-uy; }
-    const tC=((mx-rmx)*A*ux+(my-rmy)*uy), cx=rmx+ux*tC/A, cy=rmy+uy*tC, h=sl/2;
-    const na={x:cx-ux*h/A, y:cy-uy*h}, nb={x:cx+ux*h/A, y:cy+uy*h}, cur=lineOf(ln), k=.5;
-    const moved = Math.hypot(na.x-cur.a.x, na.y-cur.a.y) > .01;
+    const cur=lineOf(ln); let r=findTape(video, VW(), VH(), ln._tape || cur); if (!r) continue;
+    if (!ln.rel){   // older line: learn how it sits on the tape the first time we see them together
+      if (perpTo(cur, r, A) > .15) continue;
+      ln.rel={a:relTo(r, ln.a, A), b:relTo(r, ln.b, A)}; DB.put('lines', plainLine(ln));
+    }
+    const prev=ln._tape;
+    if (prev){ const pv={x:(prev.b.x-prev.a.x)*A, y:prev.b.y-prev.a.y}, nv={x:(r.b.x-r.a.x)*A, y:r.b.y-r.a.y};
+      if (pv.x*nv.x+pv.y*nv.y<0) r={a:r.b, b:r.a};                    // keep the same direction as before
+      const pl=Math.hypot(pv.x,pv.y), nl=Math.hypot(nv.x,nv.y); if (nl<pl*.45 || nl>pl*2.2) continue; }  // sudden big change = not our tape
+    else if (ln.tapeRef){ const pv={x:(ln.tapeRef.b.x-ln.tapeRef.a.x), y:ln.tapeRef.b.y-ln.tapeRef.a.y}, nv={x:r.b.x-r.a.x, y:r.b.y-r.a.y}; if (pv.x*nv.x+pv.y*nv.y<0) r={a:r.b, b:r.a}; }
+    ln._tape=r;
+    const na=fromRel(r, ln.rel.a, A), nb=fromRel(r, ln.rel.b, A), k=prev?.5:1;
+    if (Math.hypot(na.x-cur.a.x, na.y-cur.a.y) > .01) delete LW.base[ln.id];
     ln._a={x:cur.a.x+(na.x-cur.a.x)*k, y:cur.a.y+(na.y-cur.a.y)*k}; ln._b={x:cur.b.x+(nb.x-cur.b.x)*k, y:cur.b.y+(nb.y-cur.b.y)*k};
-    if (moved) delete LW.base[ln.id];
+    locked++;
   }
+  LW.lock = S.lines.length ? locked>0 : null;
 }
 /* line watcher: notices when something covers the stop line (works even if the AI loses the box for a moment) */
 const LW = { c:document.createElement('canvas'), base:{}, run:{} };
@@ -1589,7 +1640,7 @@ function lineWatch(t){
       const VWp=VW(), VHp=VH(); let near=null, nd=VHp*.25;
       for (const tr of tracks){ if (tr.missed>30) continue; const ax=L.a.x*VWp, ay=L.a.y*VHp, bx=L.b.x*VWp, by=L.b.y*VHp, len=Math.hypot(bx-ax,by-ay)||1;
         const dd=Math.abs(((bx-ax)*(tr.cy-ay)-(by-ay)*(tr.cx-ax))/len); if (dd<nd){ nd=dd; near=tr; } }
-      if (near && !near.crossT[ln.id]){ near.crossT[ln.id]=t; onCross(near, ln, t); }
+      if (near && !near.crossT[ln.id]){ near.crossT[ln.id]=t; onCross(near, ln, t, near.side[ln.id] || sideOf(near, ln, true)); }
     }
   }
 }
@@ -1632,6 +1683,9 @@ function saveLine(){
   if (LineEd.pts.length<2) return;
   const t=document.createElement('canvas'); t.width=192; t.height=Math.round(192*freeze.height/freeze.width); t.getContext('2d').drawImage(freeze,0,0,t.width,t.height);
   const ln = {id:uid(), name:($('#lineName').value||'Stop line').trim(), a:LineEd.pts[0], b:LineEd.pts[1], thumb:t.toDataURL('image/jpeg',.75)};
+  // remember where the line sits on the tape, so it can follow the tape when the camera moves
+  const A=freeze.width/freeze.height, tape=findTape(LineEd.snap, freeze.width, freeze.height, {a:ln.a, b:ln.b});
+  if (tape && perpTo(ln, tape, A) < .15){ ln.rel={a:relTo(tape, ln.a, A), b:relTo(tape, ln.b, A)}; ln.tapeRef=tape; }
   S.lines.push(ln); DB.put('lines', ln); closeFreeze(); renderLines(); renderCounts(); toast(`“${ln.name}” saved – the AI now watches this line 🛣️`, 'ok');
 }
 function renderLines(){
@@ -1739,15 +1793,19 @@ const Sig = { state:'G', remain:0, paused:false, total:1, prevState:null };
 const Sim = {
   phase:'G', start:0, end:0, paused:false, left:0, iv:null,
   dur(p){ const T=S.settings.timing; return 1000*(p==='G'?T.green:p==='Y'?T.yellow:T.red); },
-  enter(p){ this.phase=p; this.start=Date.now(); this.end=this.start+this.dur(p); if (this.paused) this.left=this.dur(p); },
+  holdUntil:0,
+  enter(p){ this.holdUntil=0; this.phase=p; this.start=Date.now(); this.end=this.start+this.dur(p); if (this.paused) this.left=this.dur(p); },
   begin(){ if(!this.start) this.enter('G'); clearInterval(this.iv); this.iv=setInterval(()=>this.tick(), 200); this.tick(); },
   stop(){ clearInterval(this.iv); this.iv=null; },
-  tick(){ const now=Date.now(); if (!this.paused && now>=this.end) this.enter(this.phase==='G'?'Y':this.phase==='Y'?'R':'G');
+  tick(){ const now=Date.now(), holding = this.phase==='R' && now<this.holdUntil;
+    if (holding && !this.paused && this.end-now<1000) this.end=now+1000;   // red never ends while a jumper is past the line
+    if (!this.paused && now>=this.end) this.enter(this.phase==='G'?'Y':this.phase==='Y'?'R':'G');
     const rem = Math.ceil((this.paused?this.left:this.end-now)/1000); onStatus(`S,${this.phase},${Math.max(0,rem)},${this.paused?1:0}`); },
   handle(cmd){ const p=cmd.split(','), now=Date.now();
     if (p[0]==='ADD' && p[1]===this.phase){ const ms=(+p[2])*1000, cap=this.start+S.settings.timing.maxPhase*1000;
       if (this.paused) this.left+=ms; else this.end=Math.max(this.end, Math.min(this.end+ms, cap)); }
     else if (p[0]==='GO') this.enter(p[1]);
+    else if (p[0]==='HOLD' && this.phase==='R'){ this.holdUntil=now+2500; const ms=(+p[1]||0)*1000; if (this.paused) this.left+=ms; else this.end+=ms; }
     else if (p[0]==='RUN'){ if (p[1]==='0' && !this.paused){ this.paused=true; this.left=this.end-now; } else if (p[1]==='1' && this.paused){ this.paused=false; this.end=now+this.left; } }
     if (this.iv) this.tick(); }
 };
@@ -1757,7 +1815,7 @@ function onStatus(str){
   const p = String(str).trim().split(','); if (p[0]!=='S') return;
   const st=p[1], rem=+p[2]||0;
   if (st!==Sig.state || rem>Sig.total){ Sig.total=Math.max(rem,1); }
-  if (st!==Sig.state){ Sig.prevState=Sig.state; Sig.state=st; logEv(st==='R'?'🔴 Light turned RED – gate 1 closes':st==='G'?'🟢 Light turned GREEN – gate 1 opens':'🟡 Light turned YELLOW', st==='R'?'var(--red)':st==='G'?'var(--green)':'var(--sun)', true); }
+  if (st!==Sig.state){ if (st!=='R'){ tracks.forEach(tr=>tr.viol=null); Hold.on=false; } Sig.prevState=Sig.state; Sig.state=st; logEv(st==='R'?'🔴 Light turned RED – gate 1 closes':st==='G'?'🟢 Light turned GREEN – gate 1 opens':'🟡 Light turned YELLOW', st==='R'?'var(--red)':st==='G'?'var(--green)':'var(--sun)', true); }
   const changed = rem!==Sig.remain; Sig.remain=rem; Sig.paused=p[3]==='1';
   renderSignal(changed);
 }
@@ -1771,7 +1829,7 @@ function renderSignal(bump){
   const ph=$('#phase'); ph.textContent = Sig.paused ? 'PAUSED' : st==='R'?'STOP':st==='Y'?'GET READY':'GO'; ph.style.setProperty('--pc', pc);
   const bar=$('#phasebar'); bar.style.width = (Sig.remain/Sig.total*100)+'%'; bar.style.setProperty('--pc', pc); bar.parentElement.style.setProperty('--pc', pc);
   const pb=$('#pauseBtn'); pb.querySelector('span').textContent = Sig.paused?'Resume signal':'Pause signal'; pb.querySelector('use').setAttribute('href', Sig.paused?'#i-play':'#i-pause');
-  renderGates(); renderHud();
+  renderGates(); renderHud(); updateRuleHits();
 }
 function gateOpen(i){ const mainOpen = Sig.state!=='R'; const m = i===0 ? 'main' : S.settings.servos[i].mode; return m==='main' ? mainOpen : !mainOpen; }
 let gateKey='';
@@ -1781,7 +1839,7 @@ function renderGates(force){
 }
 function renderHud(){
   const st=Sig.state, c = st==='R'?'var(--red)':st==='Y'?'var(--sun)':'var(--green)';
-  $('#hud').innerHTML = (S.mode==='live' && (Cam.on)) ? `<span class="hp" style="--c:${c}"><i></i>${st==='R'?'RED':st==='Y'?'YELLOW':'GREEN'} · ${Sig.remain}s</span>${Mic.on?`<span class="hp" style="--c:var(--lilac)"><i></i>${Math.round(Mic.dbS)} dB</span>`:''}` : '';
+  $('#hud').innerHTML = (S.mode==='live' && (Cam.on)) ? `<span class="hp" style="--c:${c}"><i></i>${st==='R'?'RED':st==='Y'?'YELLOW':'GREEN'} · ${Sig.remain}s</span>${Mic.on?`<span class="hp" style="--c:var(--lilac)"><i></i>${Math.round(Mic.dbS)} dB</span>`:''}${Hold.on?`<span class="hp" style="--c:var(--red)"><i></i>Holding RED · gate closed</span>`:''}${LW.lock===true?`<span class="hp" style="--c:var(--green)"><i></i>Line locked to tape</span>`:LW.lock===false?`<span class="hp" style="--c:var(--sun)"><i></i>Looking for the tape…</span>`:''}` : '';
 }
 
 /* =====================================================================
@@ -1856,21 +1914,45 @@ function updateTracks(dets, t){
       const dist=((bx-ax)*(py-ay)-(by-ay)*(px-ax))/len, tp=((px-ax)*(bx-ax)+(py-ay)*(by-ay))/L2, prev=best.side[ln.id];
       const side = dist>margin ? 1 : dist<-margin ? -1 : 0;
       if (side!==0 && tp>-.05 && tp<1.05){
-        if (prev && prev!==side && best.seen>2 && !best.crossT[ln.id]){ best.crossT[ln.id]=t; onCross(best, ln, t); }
+        if (prev && prev!==side && best.seen>2 && !best.crossT[ln.id]){ best.crossT[ln.id]=t; onCross(best, ln, t, prev); }
         best.side[ln.id]=side;
       }
     }
   }
   tracks = tracks.filter(tr=>{ if (!tr.matched) tr.missed=(tr.missed||0)+1; return tr.missed<40; });
+  holdStep(t);
   const n = tracks.filter(tr=>tr.missed===0).length; if (n!==Stats.now) setStat('now', n);
   fire('count', {n});
 }
 function vehName(tr){ const c = tr.label && clsById('v', tr.label); return c ? c.name : 'Vehicle'; }
-function onCross(tr, ln, t){
+/* which side of the line is this vehicle on? (+1 / -1, or 0 = standing on the line) */
+function sideOf(tr, ln, raw){
+  const W=VW(), H=VH(), L=lineOf(ln), ax=L.a.x*W, ay=L.a.y*H, bx=L.b.x*W, by=L.b.y*H, len=Math.hypot(bx-ax,by-ay)||1;
+  const d=((bx-ax)*(tr.cy-ay)-(by-ay)*(tr.cx-ax))/len; if (raw) return Math.sign(d)||1; return d>H*.03 ? 1 : d<-H*.03 ? -1 : 0;
+}
+/* "keep RED until the vehicle goes back": while a red-light jumper is still past the line,
+   the light stays red (the gate stays shut) and seconds are added every second */
+const Hold = { on:false, rule:null, last:0 };
+function holdStep(t){
+  let active=null;
+  for (const tr of tracks){
+    if (!tr.viol) continue; const ln=S.lines.find(l=>l.id===tr.viol.line); if (!ln){ tr.viol=null; continue; }
+    const sd = sideOf(tr, ln);
+    if (sd!==0 && sd===tr.viol.origin){ logEv(`↩️ ${esc(vehName(tr))} #${tr.id} went back behind “${esc(ln.name)}” – the red light can finish now`, 'var(--green)'); tr.viol=null; delete tr.crossT[ln.id]; continue; }
+    if (!active) active=tr;
+  }
+  const r = active && S.rules.find(x=>x.id===active.viol.rule && x.on);
+  if (r && Sig.state==='R'){
+    if (!Hold.on){ Hold.on=true; Hold.last=0; logEv(`⛔ RED stays on and the gate stays closed until ${esc(vehName(active))} #${active.id} goes back`, 'var(--red)'); }
+    Hold.rule=r.id;
+    if (t-Hold.last>=1000){ Hold.last=t; send(`HOLD,${+r.sec||0}`); if (+r.sec) setStat('add', Stats.add+(+r.sec)); }
+  } else if (Hold.on){ Hold.on=false; Hold.rule=null; if (!active) logEv('✅ Road is clear behind the line – normal timing again', 'var(--green)'); }
+}
+function onCross(tr, ln, t, origin){
   tr.flash=t; setStat('cross', Stats.cross+1);
   if (Sig.state==='R'){ setStat('viol', Stats.viol+1); const st=$('#stage'); st.classList.remove('viol'); void st.offsetWidth; st.classList.add('viol'); logEv(`🚨 ${esc(vehName(tr))} #${tr.id} crossed “${esc(ln.name)}” on RED!`, 'var(--red)'); }
   else logEv(`🚗 ${esc(vehName(tr))} #${tr.id} crossed “${esc(ln.name)}”`, 'var(--teal)');
-  fire('cross', {line:ln.id, name:ln.name});
+  fire('cross', {line:ln.id, name:ln.name, track:tr, origin});
 }
 function checkLoud(){
   for (const r of S.rules) if (r.on && r.trigger==='loud' && Mic.db >= +r.db) { fire('loud', {db:Mic.db}); break; }
@@ -1878,7 +1960,7 @@ function checkLoud(){
 
 /* rules engine */
 const TRIG = {cross:'a vehicle crosses', loud:'the sound is louder than', sound:'the AI hears', vehicle:'the AI sees', count:'vehicles on screen are at least'};
-const ACT  = {addRed:'add seconds to RED', addGreen:'add seconds to GREEN', goRed:'switch to RED now', goGreen:'switch to GREEN now'};
+const ACT  = {holdRed:'keep RED until the vehicle goes back', addRed:'add seconds to RED', addGreen:'add seconds to GREEN', goRed:'switch to RED now', goGreen:'switch to GREEN now'};
 const WHEN = {R:'RED', Y:'YELLOW', G:'GREEN', any:'any colour'};
 function ruleMatches(r, trig, info){
   if (!r.on || r.trigger!==trig) return false;
@@ -1896,6 +1978,11 @@ function fire(trig, info){
     if (!ruleMatches(r, trig, info)) continue;
     if (now - (r._last||-1e9) < (+r.cool||3)*1000) continue;
     if ((r.action==='goGreen' && Sig.state==='G') || (r.action==='goRed' && Sig.state==='R')) continue;
+    if (r.action==='holdRed'){   // only makes sense on red, for the vehicle that crossed
+      if (trig!=='cross' || Sig.state!=='R' || !info.track) continue;
+      info.track.viol = {line:info.line, origin:info.origin, rule:r.id}; r._last=now;
+      toast(`Rule: ${esc(vehName(info.track))} crossed on RED → red stays on until it goes back`, 'bad'); continue;
+    }
     r._last = now; doAction(r, trig, info);
   }
 }
@@ -1962,7 +2049,7 @@ function loop(t){
     lastDetT=t;
     try{
       if (BgLearn.until) bgStep(t); else { updateTracks(detect(video), t); lineWatch(t); }
-      if (t-(LW.alignT||0)>800){ LW.alignT=t; alignLines(); }
+      if (t-(LW.alignT||0)>400){ LW.alignT=t; alignLines(); }
     } catch(e){ console.warn(e); }
   }
   drawOverlay(t);
@@ -2039,7 +2126,7 @@ const fmt = {'timing.green':v=>v+' s','timing.yellow':v=>v+' s','timing.red':v=>
 function paintRange(r){ const p=(r.value-r.min)/(r.max-r.min)*100; r.style.setProperty('--p', p+'%'); }
 function renderSettings(){
   $$('[data-set]').forEach(el=>{ const v=getP(S.settings, el.dataset.set); if (el.type==='checkbox') el.checked=!!v; else { el.value=v; paintRange(el); const val=el.parentElement.querySelector('.val'); if (val) val.textContent=(fmt[el.dataset.set]||String)(v); } });
-  renderCycle(); renderGateCards(); renderRules(); renderDataStats();
+  renderCycle(); renderGateCards(); renderDataStats();
 }
 function renderCycle(){ const T=S.settings.timing; $('#cycle').innerHTML = `<div style="flex:${T.green};background:var(--green)">${T.green}s</div><div style="flex:${T.yellow};background:var(--sun)">${T.yellow}s</div><div style="flex:${T.red};background:var(--red)">${T.red}s</div>`; }
 function renderGateCards(){
@@ -2054,36 +2141,55 @@ function renderGateCards(){
   $$('#gcards input[type=range]').forEach(paintRange);
 }
 function optList(arr, sel, any){ return (any?`<option value="any"${sel==='any'?' selected':''}>${any}</option>`:'') + arr.map(o=>`<option value="${o.id}"${o.id===sel?' selected':''}>${esc(o.name)}</option>`).join(''); }
+const ruleNm = (arr,id) => (arr.find(o=>o.id===id)||{}).name || '…';
+function ruleText(r){   // short version for the live list
+  const t = r.trigger==='cross' ? `Crosses ${r.line==='any'?'the line':ruleNm(S.lines,r.line)}` : r.trigger==='loud' ? `Louder than ${r.db} dB` : r.trigger==='sound' ? `Hears ${ruleNm(S.sClasses,r.label)}` : r.trigger==='vehicle' ? `Sees ${ruleNm(S.vClasses,r.label)}` : `${r.n}+ vehicles`;
+  const w = r.when==='any' ? '' : ` on ${WHEN[r.when]}`;
+  const a = r.action==='holdRed' ? `keep RED till it goes back${+r.sec?` (+${r.sec} s/s)`:''}` : r.action==='addRed' ? `+${r.sec} s red` : r.action==='addGreen' ? `+${r.sec} s green` : r.action==='goRed' ? 'switch to RED' : 'switch to GREEN';
+  return `${t}${w}  ›  ${a}`;
+}
+function renderRuleMini(){
+  const on=S.rules.filter(r=>r.on);
+  $('#ruleMini').innerHTML = on.map(r=>`<div class="rulemini" data-r="${r.id}"><i></i>${esc(ruleText(r))}</div>`).join('') || '<p class="hint">No rules switched on. Press Edit rules to add some.</p>';
+}
+function updateRuleHits(){
+  const now=performance.now();
+  $$('#ruleMini .rulemini').forEach(el=>{ const r=S.rules.find(x=>x.id===el.dataset.r); el.classList.toggle('hit', !!r && ((Hold.on && Hold.rule===r.id) || now-(r._last||-1e9)<1800)); });
+}
+let draft=[];
+function openRules(){ draft = S.rules.map(({_last,...r})=>({...r})); renderRuleList(); $('#rulesScrim').classList.add('on'); $('#drawer').classList.add('on'); }
+function closeRules(){ $('#rulesScrim').classList.remove('on'); $('#drawer').classList.remove('on'); }
 function ruleSentence(r){
   const nm = (arr,id) => (arr.find(o=>o.id===id)||{}).name || '…';
   const t = r.trigger==='cross' ? `a vehicle crosses <b>${r.line==='any'?'any line':esc(nm(S.lines,r.line))}</b>` : r.trigger==='loud' ? `a sound is louder than <b>${r.db} dB</b>` : r.trigger==='sound' ? `the AI hears <b>${esc(nm(S.sClasses,r.label))}</b>` : r.trigger==='vehicle' ? `the AI sees <b>${esc(nm(S.vClasses,r.label))}</b>` : `<b>${r.n} or more</b> vehicles are on screen`;
-  const a = r.action==='addRed' ? `add <b>${r.sec} seconds</b> to the red light (gate stays closed)` : r.action==='addGreen' ? `add <b>${r.sec} seconds</b> to the green light` : r.action==='goRed' ? `switch the light to <b>RED</b> right away` : `switch the light to <b>GREEN</b> right away`;
+  const a = r.action==='holdRed' ? `keep the light <b>RED</b> and the gate <b>closed</b> until the vehicle goes back behind the line${+r.sec?` – adding <b>${r.sec} s</b> every second`:''}` : r.action==='addRed' ? `add <b>${r.sec} seconds</b> to the red light (gate stays closed)` : r.action==='addGreen' ? `add <b>${r.sec} seconds</b> to the green light` : r.action==='goRed' ? `switch the light to <b>RED</b> right away` : `switch the light to <b>GREEN</b> right away`;
   return `When ${t} while the light is <b>${WHEN[r.when]}</b>, ${a}.`;
 }
-function renderRules(){
-  const el=$('#rules');
-  if (!S.rules.length){ el.innerHTML = `<div class="emptyhint">No rules. The signal just loops green → yellow → red. Add a rule above!</div>`; return; }
-  el.innerHTML = S.rules.map(r=>{
+function renderRuleList(){
+  const el=$('#ruleList');
+  if (!draft.length){ el.innerHTML = `<p class="hint" style="margin-bottom:10px">No rules yet – the signal just loops green → yellow → red. Add one below.</p>`; return; }
+  el.innerHTML = draft.map(r=>{
+    const sel=(k,opts,v)=>`<select data-k="${k}">${opts.map(([o,t])=>`<option value="${o}"${o===v?' selected':''}>${t}</option>`).join('')}</select>`;
     let param='';
-    if (r.trigger==='cross') param = `<select data-r="${r.id}" data-k="line">${optList(S.lines, r.line, 'any line')}</select>`;
-    if (r.trigger==='loud') param = `<input type="number" min="30" max="130" value="${r.db}" data-r="${r.id}" data-k="db"> dB`;
-    if (r.trigger==='sound') param = S.sClasses.length ? `<select data-r="${r.id}" data-k="label"><option value="">choose…</option>${optList(S.sClasses, r.label)}</select>` : `<span class="tag" style="--c-s:var(--sun-s);--c-d:var(--sun-d)">train a sound first</span>`;
-    if (r.trigger==='vehicle') param = S.vClasses.length ? `<select data-r="${r.id}" data-k="label"><option value="">choose…</option>${optList(S.vClasses, r.label)}</select>` : `<span class="tag" style="--c-s:var(--sun-s);--c-d:var(--sun-d)">train a vehicle first</span>`;
-    if (r.trigger==='count') param = `<input type="number" min="1" max="10" value="${r.n||3}" data-r="${r.id}" data-k="n">`;
-    return `<div class="rule${r.on?'':' off'}">
-      <div class="rr"><span class="switch"><input type="checkbox" ${r.on?'checked':''} data-r="${r.id}" data-k="on"><span></span></span>
-        <span class="tag" style="--c-s:var(--blue-s);--c-d:var(--blue-d)">WHEN</span>
-        <select data-r="${r.id}" data-k="trigger">${Object.entries(TRIG).map(([k,v])=>`<option value="${k}"${k===r.trigger?' selected':''}>${v}</option>`).join('')}</select>${param}
-        <span>while light is</span><select data-r="${r.id}" data-k="when">${Object.entries(WHEN).map(([k,v])=>`<option value="${k}"${k===r.when?' selected':''}>${v}</option>`).join('')}</select>
-        <span class="tag" style="--c-s:var(--green-s);--c-d:var(--green-d)">THEN</span>
-        <select data-r="${r.id}" data-k="action">${Object.entries(ACT).map(([k,v])=>`<option value="${k}"${k===r.action?' selected':''}>${v}</option>`).join('')}</select>
-        ${r.action.startsWith('add')?`<input type="number" min="1" max="60" value="${r.sec}" data-r="${r.id}" data-k="sec"> s`:''}
-        <span class="grow"></span><span class="hint">wait</span><input type="number" min="1" max="60" value="${r.cool}" data-r="${r.id}" data-k="cool" title="Seconds before this rule can fire again"><span class="hint">s</span>
-        <button class="iconbtn" style="width:34px;height:34px;border-radius:10px" data-act="delRule" data-id="${r.id}" title="Delete rule">${icon('i-trash')}</button></div>
+    if (r.trigger==='cross') param = `<select data-k="line">${optList(S.lines, r.line, 'any line')}</select>`;
+    if (r.trigger==='loud') param = `<input type="number" min="30" max="130" value="${r.db}" data-k="db"><span>dB</span>`;
+    if (r.trigger==='sound') param = S.sClasses.length ? `<select data-k="label"><option value="">choose…</option>${optList(S.sClasses, r.label)}</select>` : `<span class="tag" style="--c-s:var(--sun-s);--c-d:var(--sun-d)">train a sound first</span>`;
+    if (r.trigger==='vehicle') param = S.vClasses.length ? `<select data-k="label"><option value="">choose…</option>${optList(S.vClasses, r.label)}</select>` : `<span class="tag" style="--c-s:var(--sun-s);--c-d:var(--sun-d)">train a vehicle first</span>`;
+    if (r.trigger==='count') param = `<input type="number" min="1" max="10" value="${r.n||3}" data-k="n"><span>vehicles</span>`;
+    const acts = Object.entries(ACT).filter(([k])=>k!=='holdRed' || r.trigger==='cross');
+    let ap='';
+    if (r.action==='holdRed') ap = `<span>adding</span><input type="number" min="0" max="5" value="${r.sec}" data-k="sec"><span>s every second</span>`;
+    else if (r.action.startsWith('add')) ap = `<input type="number" min="1" max="60" value="${r.sec}" data-k="sec"><span>seconds</span>`;
+    const cool = r.action==='holdRed' ? '' : `<span class="cool">wait <input type="number" min="1" max="60" value="${r.cool}" data-k="cool"> s before it can happen again</span>`;
+    return `<div class="rule${r.on?'':' off'}" data-id="${r.id}">
+      <div class="l"><span class="switch"><input type="checkbox" ${r.on?'checked':''} data-k="on" aria-label="Rule on"><span></span></span><span class="tag when">WHEN</span>
+        ${sel('trigger', Object.entries(TRIG), r.trigger)}${param}<span>while the light is</span>${sel('when', Object.entries(WHEN), r.when)}
+        <button class="del" data-delrule aria-label="Delete rule">×</button></div>
+      <div class="l"><span class="tag then">THEN</span>${sel('action', acts, r.action)}${ap}${cool}</div>
       <div class="say">${ruleSentence(r)}</div></div>`; }).join('');
 }
 const PRESETS = {
-  jump:()=>({trigger:'cross', line:'any', when:'R', action:'addRed', sec:5, cool:3}),
+  jump:()=>({trigger:'cross', line:'any', when:'R', action:'holdRed', sec:1, cool:3}),
   honk:()=>({trigger:'loud', db:80, when:'R', action:'addRed', sec:3, cool:4}),
   amb:()=>({trigger:'vehicle', label:(S.vClasses.find(c=>/amb|fire|police|emerg/i.test(c.name))||{}).id||'', when:'R', action:'goGreen', cool:10}),
   busy:()=>({trigger:'count', n:3, when:'R', action:'goGreen', cool:15}),
@@ -2097,16 +2203,10 @@ document.addEventListener('input', e => {
   if (el.dataset.g!==undefined){ const s=S.settings.servos[+el.dataset.g], k=el.dataset.k; s[k] = el.type==='range' ? +el.value : el.value;
     if (el.type==='range'){ paintRange(el); el.previousElementSibling.querySelector('b').textContent=el.value+'°'; const card=el.closest('.gcard'); card.querySelector('.h.o').style.transform=`rotate(${-s.open}deg)`; card.querySelector('.h.c').style.transform=`rotate(${-s.close}deg)`; }
     markUnsaved(); }
-  if (el.dataset.r && el.type==='number'){ const r=S.rules.find(x=>x.id===el.dataset.r); if (r){ r[el.dataset.k]=+el.value; el.closest('.rule').querySelector('.say').innerHTML=ruleSentence(r); markUnsaved(); } }
 });
 document.addEventListener('change', e => {
   const el=e.target;
   if (el.dataset.g!==undefined && el.tagName==='SELECT'){ S.settings.servos[+el.dataset.g].mode = el.value; markUnsaved(); }
-  if (el.dataset.r && el.type!=='number'){ const r=S.rules.find(x=>x.id===el.dataset.r); if (!r) return; const k=el.dataset.k;
-    r[k] = el.type==='checkbox' ? el.checked : el.value;
-    if (k==='trigger'){ Object.assign(r, {line:r.line||'any', db:r.db||80, n:r.n||3, label:''}); }
-    if (k==='action' && r.action.startsWith('add') && !r.sec) r.sec=3;
-    renderRules(); markUnsaved(); }
   if (el.id==='algoV' || el.id==='algoS'){ S.algo[el.id==='algoV'?'v':'s']=el.value; Brain[el.id==='algoV'?'v':'s'].stale=true; saveMeta(); renderAI(); renderCounts(); }
 });
 ['kV','kS'].forEach(id => $('#'+id).addEventListener('input', e => { const k = id==='kV'?'kv':'ks'; S.algo[k]=+e.target.value; $('#'+id+'v').textContent=e.target.value; paintRange(e.target); saveMeta(); renderAI(); }));
@@ -2178,8 +2278,9 @@ document.addEventListener('click', async e => {
   const tp = e.target.closest('[data-tp]'); if (tp){ const p=S.pending.find(x=>x.id===tp.dataset.tp); if (p){ p.sel=!p.sel; savePending(); renderTray(); } return; }
   const lb = e.target.closest('[data-label]'); if (lb) return labelPending(lb.dataset.label);
   const rb = e.target.closest('[data-rec]'); if (rb) return recordSound(rb.dataset.rec, +rb.dataset.n);
-  const pr = e.target.closest('[data-preset]'); if (pr){ const r={id:uid(), on:true, ...PRESETS[pr.dataset.preset]()}; S.rules.push(r); renderRules(); markUnsaved(); toast('Rule added – check it and press Save'); return; }
+  const pr = e.target.closest('[data-preset]'); if (pr){ const r={id:uid(), on:true, ...PRESETS[pr.dataset.preset]()}; draft.push(r); renderRuleList(); $('#ruleList').lastElementChild?.scrollIntoView({behavior:'smooth',block:'nearest'}); toast('Rule added – check it and press Save'); return; }
   if (e.target.closest('[data-close]')){ e.target.closest('.scrim').classList.remove('on'); return; }
+  if (e.target.id==='rulesScrim'){ closeRules(); return; }
   if (e.target.classList.contains('scrim')){ e.target.classList.remove('on'); return; }
   const b = e.target.closest('[data-act]'); if (!b) return;
   const id = b.dataset.id;
@@ -2213,14 +2314,24 @@ document.addEventListener('click', async e => {
     case 'add5': send('ADD,R,5'); if (Sig.state==='R'){ setStat('add', Stats.add+5); logEv('👆 You added 5 s to RED', 'var(--sun)'); } else toast('+5 s works only while the light is red'); break;
     case 'resetStats': ['now','cross','viol','honk','add'].forEach(k=>setStat(k,0)); break;
     case 'clearLog': $('#log').innerHTML=''; break;
-    case 'openRules': openSettings('rules'); break;
+    case 'openRules': openRules(); break;
     case 'testO': case 'testC': { const i=+b.dataset.i, s=S.settings.servos[i], a = b.dataset.act==='testO'?s.open:s.close; send(`TST,${i},${a}`); toast(BLE.connected?`Servo ${i+1} → ${a}°`:`Connect the Arduino to test servo ${i+1} (${a}°)`, BLE.connected?'ok':'warn'); break; }
     case 'saveSettings': saveSettingsDB(); pushConfig(true); $('#setNote').textContent = BLE.connected ? '✔ Saved and sent to the Arduino.' : '✔ Saved. Connect the Arduino to send these settings.'; toast(BLE.connected?'Settings sent to the Arduino ✔':'Settings saved ✔', 'ok'); renderGates(true); drawMic(); break;
-    case 'delRule': S.rules=S.rules.filter(r=>r.id!==id); renderRules(); markUnsaved(); break;
+    case 'addRule': draft.push({id:uid(), on:true, trigger:'cross', line:'any', when:'R', action:'holdRed', sec:1, cool:3}); renderRuleList(); $('#ruleList').lastElementChild?.scrollIntoView({behavior:'smooth',block:'nearest'}); break;
+    case 'resetRules': draft = defaultRules(); renderRuleList(); toast('Default rules loaded – press Save rules to keep them'); break;
+    case 'saveRules': S.rules = draft.map(r=>({...r})); saveSettingsDB(); renderRuleMini(); closeRules(); drawMic(); toast('Rules saved ✔', 'ok'); break;
+    case 'closeRules': closeRules(); break;
     case 'export': exportData(); break;
   }
 });
 
+$('#ruleList').addEventListener('input', e => { const el=e.target, row=el.closest('.rule'); if (!row || el.type!=='number') return; const r=draft.find(x=>x.id===row.dataset.id); r[el.dataset.k]=+el.value; row.querySelector('.say').innerHTML=ruleSentence(r); });
+$('#ruleList').addEventListener('change', e => { const el=e.target, row=el.closest('.rule'); if (!row || el.type==='number') return; const r=draft.find(x=>x.id===row.dataset.id), k=el.dataset.k;
+  r[k] = el.type==='checkbox' ? el.checked : el.value;
+  if (k==='trigger'){ Object.assign(r, {line:r.line||'any', db:r.db||80, n:r.n||3, label:''}); if (r.trigger!=='cross' && r.action==='holdRed'){ r.action='addRed'; r.sec=3; } }
+  if (k==='action'){ if (r.action==='holdRed'){ r.sec=1; r.when='R'; } else if (r.action.startsWith('add') && !(+r.sec)) r.sec=3; }
+  renderRuleList(); });
+$('#ruleList').addEventListener('click', e => { const d=e.target.closest('[data-delrule]'); if (!d) return; const id=d.closest('.rule').dataset.id; draft=draft.filter(r=>r.id!==id); renderRuleList(); });
 function openSettings(tab){ renderSettings(); $('#setNote').textContent='Changes are sent to the Arduino when you press Save.'; if (tab) $(`.stabs button[data-st="${tab}"]`).click(); $('#setScrim').classList.add('on'); }
 $('#setBtn').addEventListener('click', ()=>openSettings());
 $('#bleBtn').addEventListener('click', ()=> BLE.connected ? (confirm('Disconnect the Arduino?') && BLE.disconnect()) : BLE.connect());
@@ -2237,7 +2348,7 @@ $('#cfYes').addEventListener('click', async ()=>{
 document.addEventListener('keydown', e => {
   if (e.code==='Space' && S.mode==='train' && !$('#appView').classList.contains('hidden') && !/INPUT|SELECT|TEXTAREA|BUTTON/.test(document.activeElement.tagName) && !$('.scrim.on')){ e.preventDefault(); capturePhoto(); }
 });
-document.addEventListener('keydown', e => { if (e.key==='Escape') $$('.scrim.on').forEach(s=>s.classList.remove('on')); });
+document.addEventListener('keydown', e => { if (e.key==='Escape') closeRules(); if (e.key==='Escape') $$('.scrim.on').forEach(s=>s.classList.remove('on')); });
 
 /* export / import */
 function exportData(){
@@ -2259,7 +2370,7 @@ $('#importFile').addEventListener('change', async e => {
 });
 
 function syncAlgoInputs(){ $('#algoV').value=S.algo.v; $('#algoS').value=S.algo.s; $('#kV').value=S.algo.kv; $('#kS').value=S.algo.ks; $('#kVv').textContent=S.algo.kv; $('#kSv').textContent=S.algo.ks; paintRange($('#kV')); paintRange($('#kS')); }
-function renderAll(){ renderIgnore(); renderTray(); renderV(); renderS(); renderLines(); renderCounts(); renderGates(); renderSignal(false); }
+function renderAll(){ renderRuleMini(); renderIgnore(); renderTray(); renderV(); renderS(); renderLines(); renderCounts(); renderGates(); renderSignal(false); }
 
 /* =====================================================================
    START
