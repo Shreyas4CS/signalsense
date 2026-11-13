@@ -1098,6 +1098,7 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
           <div class="field" style="--c:var(--blue)"><label><i></i>Match strictness</label><input type="range" min="20" max="95" data-set="det.simThresh" style="--c:var(--blue)"><span class="val"></span></div>
           <p class="hint">Higher = the AI only names a vehicle when it is very sure; otherwise it shows “not trained”. Lower it if your new toys are not being named.</p>
           <div class="field" style="--c:var(--blue)"><label><i></i>Max vehicles tracked</label><input type="range" min="1" max="10" data-set="det.maxBoxes" style="--c:var(--blue)"><span class="val"></span></div>
+          <div class="field" style="grid-template-columns:1fr auto"><label style="font-size:15px">Also find vehicles by comparing with the empty road (finds toys on the tape)</label><span class="switch"><input type="checkbox" data-set="det.motion"><span></span></span></div>
           <div class="field" style="grid-template-columns:1fr auto"><label style="font-size:15px">Stop line follows the black tape automatically (if the camera moves a little)</label><span class="switch"><input type="checkbox" data-set="det.autoAlign"><span></span></span></div>
           <div class="field" style="grid-template-columns:1fr auto"><label style="font-size:15px">Box any object (good for toys), not only real-vehicle shapes</label><span class="switch"><input type="checkbox" data-set="det.anyObject"><span></span></span></div>
         </div>
@@ -1194,7 +1195,7 @@ function defaultSettings(){
       {name:'Cross gate', open:90, close:0, mode:'reverse'}
     ],
     sound:{calib:100, gate:50},
-    det:{minScore:35, simThresh:55, maxBoxes:5, anyObject:true, autoAlign:true}
+    det:{minScore:35, simThresh:55, maxBoxes:5, anyObject:true, autoAlign:true, motion:true}
   };
 }
 function defaultRules(){
@@ -1441,7 +1442,7 @@ function bgStep(t){
   const W=VW(), H=VH(); BgLearn.frames++;
   for (const d of detect(video, true)){ const z={x:d.x/W, y:d.y/H, w:d.w/W, h:d.h/H}; const m=BgLearn.seen.find(o=>iou(o,z)>.3); if (m){ m.n++; } else BgLearn.seen.push({...z, n:1}); }
   if (t >= BgLearn.until){
-    BgLearn.until=0; LW.base={};
+    BgLearn.until=0; LW.base={}; bgCapture(video);
     const add = BgLearn.seen.filter(z=>z.n >= Math.max(2, BgLearn.frames*.15)).map(({x,y,w,h})=>({x,y,w,h}));
     S.ignore = [...S.ignore, ...add.filter(z=>S.ignore.every(o=>iou(o,z)<.5))]; DB.kv('ignore', S.ignore); renderIgnore();
     const b=$('[data-act="learnBg"]'); b.disabled=false; b.innerHTML=icon('i-road')+'Learn empty road';
@@ -2071,7 +2072,60 @@ function startCalibration(){
   S.lines.forEach(l=>{ l._tape=null; });
   Object.assign(Cal, {state:'calib', hist:[], t0:performance.now(), lostT:0, prog:0}); renderCal();
 }
+/* =====================================================================
+   EMPTY-ROAD DETECTOR (backup for MediaPipe)
+   Remembers what the empty road looks like. Anything new on it (a toy car, even on
+   the black tape) shows up as a "blob" and gets a box.
+   ===================================================================== */
+const BGM = { c:document.createElement('canvas'), w:160, h:90, base:null, age:null, ready:false, last:[] };
+function bgFrame(src){
+  const W=src.videoWidth||src.naturalWidth||src.width, H=src.videoHeight||src.naturalHeight||src.height;
+  BGM.h=Math.max(30, Math.round(BGM.w*H/W)); BGM.c.width=BGM.w; BGM.c.height=BGM.h;
+  const x=BGM.c.getContext('2d',{willReadFrequently:true}); x.drawImage(src,0,0,BGM.w,BGM.h); return x.getImageData(0,0,BGM.w,BGM.h).data;
+}
+function bgCapture(src){
+  const d=bgFrame(src||video), n=BGM.w*BGM.h; BGM.base=new Float32Array(n*3); BGM.age=new Uint16Array(n);
+  for (let i=0;i<n;i++){ BGM.base[i*3]=d[i*4]; BGM.base[i*3+1]=d[i*4+1]; BGM.base[i*3+2]=d[i*4+2]; }
+  BGM.ready=true;
+}
+function blobDetect(src){
+  if (!BGM.ready) return [];
+  src=src||video; const d=bgFrame(src), w=BGM.w, h=BGM.h, n=w*h, B=BGM.base, fg=new Uint8Array(n);
+  for (let i=0;i<n;i++){
+    const r=d[i*4], g=d[i*4+1], b=d[i*4+2], r0=B[i*3], g0=B[i*3+1], b0=B[i*3+2];
+    const s=r+g+b+1, s0=r0+g0+b0+1, dl=Math.abs(s-s0)/3;
+    const dc=(Math.abs(r/s-r0/s0)+Math.abs(g/s-g0/s0)+Math.abs(b/s-b0/s0))*255;   // colour change (ignores soft shadows)
+    const on = dc>34 && (s>90 || s0>90) || dl>70;
+    if (on){ fg[i]=1; if (++BGM.age[i]>380){ for (let j=0;j<3;j++) B[i*3+j]+=(d[i*4+j]-B[i*3+j])*.05; } }  // parked for ~25 s → becomes road
+    else { BGM.age[i]=0; for (let j=0;j<3;j++) B[i*3+j]+=(d[i*4+j]-B[i*3+j])*.03; }                      // slowly follow the light
+  }
+  // close small gaps (dilate), then find connected blobs
+  const m=new Uint8Array(n);
+  for (let y=1;y<h-1;y++) for (let x=1;x<w-1;x++){ const k=y*w+x; if (fg[k]||fg[k-1]||fg[k+1]||fg[k-w]||fg[k+w]) m[k]=1; }
+  const seen=new Uint8Array(n), st=new Int32Array(n), out=[], SW=src.videoWidth||src.naturalWidth||src.width, SH=src.videoHeight||src.naturalHeight||src.height;
+  for (let i=0;i<n;i++){ if (!m[i]||seen[i]) continue; let sp=0, cnt=0, x0=w, y0=h, x1=0, y1=0; st[sp++]=i; seen[i]=1;
+    while (sp){ const k=st[--sp], x=k%w, y=(k/w)|0; cnt++; if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y;
+      for (const q of [k-1,k+1,k-w,k+w]) if (q>=0 && q<n && m[q] && !seen[q] && Math.abs((q%w)-x)<=1){ seen[q]=1; st[sp++]=q; } }
+    const bw=x1-x0+1, bh=y1-y0+1, fill=cnt/(bw*bh);
+    if (cnt < n*.004 || fill < .3) continue;
+    const box={x:x0/w*SW, y:y0/h*SH, w:bw/w*SW, h:bh/h*SH, cat:'vehicle', score:.5, blob:true};
+    if (shapeOk(box, SW, SH)) out.push(box);
+  }
+  BGM.last=out; return out;
+}
+/* MediaPipe boxes + empty-road blobs that MediaPipe missed */
+function detectAll(){
+  const dets=detect(video);
+  if (!S.settings.det.motion || !BGM.ready) return dets;
+  const W=VW(), H=VH();
+  let blobs=blobDetect(video);
+  if (S.ignore.length) blobs=blobs.filter(b=>S.ignore.every(z=>iou(b,{x:z.x*W,y:z.y*H,w:z.w*W,h:z.h*H})<.35));
+  const extra=blobs.filter(b=>dets.every(d=>iou(b,d)<.25 && !(b.x>=d.x-5 && b.y>=d.y-5 && b.x+b.w<=d.x+d.w+5 && b.y+b.h<=d.y+d.h+5)));
+  return dets.concat(extra);
+}
+
 function lockLine(){
+  if (S.settings.det.motion) bgCapture(video);
   Cal.state='locked'; tracks=[]; LW.base={}; renderCal();
   logEv('🔒 Stop line locked – the AI is now watching for vehicles', 'var(--blue)'); toast('🔒 Line locked – vehicle detection started', 'ok');
 }
@@ -2099,7 +2153,7 @@ function renderCal(){
   const pct=Math.round(Cal.prog*100);
   const box = {
     calib:`<div class="calring" style="--p:${pct}"><span>${pct}%</span></div><div><b>Calibrating the stop line…</b><p>Keep the camera still. Vehicles will be detected after the line is locked.</p></div>`,
-    found:`<div class="calok">✓</div><div><b>Stop line found!</b><p>Check that the line sits on the tape, then lock it.</p><div class="row" style="margin-top:10px"><button class="btn green" data-act="lockLine">🔒 Lock line &amp; start</button><button class="btn sm" data-act="recal">↻ Recalibrate</button></div></div>`,
+    found:`<div class="calok">✓</div><div><b>Stop line found!</b><p>Take the vehicles <b>off the road</b>, check the line sits on the tape, then lock it. (The AI remembers the empty road.)</p><div class="row" style="margin-top:10px"><button class="btn green" data-act="lockLine">🔒 Lock line &amp; start</button><button class="btn sm" data-act="recal">↻ Recalibrate</button></div></div>`,
     failed:`<div class="calok bad">!</div><div><b>Can't find the black tape</b><p>Make sure the camera can see the whole tape, with good light.</p><div class="row" style="margin-top:10px"><button class="btn sun" data-act="recal">↻ Try again</button><button class="btn sm" data-act="useSaved">Use the saved line</button></div></div>`,
     noline:`<div class="calok bad">!</div><div><b>No stop line saved yet</b><p>Draw one in Training → Road line, or watch vehicles without a line.</p><div class="row" style="margin-top:10px"><button class="btn blue" data-act="goLine">Draw a line</button><button class="btn sm" data-act="noLineGo">Start without a line</button></div></div>`
   }[st];
@@ -2115,7 +2169,7 @@ function loop(t){
   if (live && Cal.state==='search') holdStep(t);   // keep a red-light hold going while the line is found again
   if (live && detecting() && MP.ready && t-lastDetT>70){   // vehicles are only detected after the line is locked
     lastDetT=t;
-    try{ if (BgLearn.until) bgStep(t); else { updateTracks(detect(video), t); lineWatch(t); } } catch(e){ console.warn(e); }
+    try{ if (BgLearn.until) bgStep(t); else { updateTracks(detectAll(), t); lineWatch(t); } } catch(e){ console.warn(e); }
   }
   drawOverlay(t);
 }
@@ -2362,7 +2416,7 @@ document.addEventListener('click', async e => {
     case 'recal': startCalibration(); toast('Calibrating the stop line again…'); break;
     case 'useSaved': S.lines.forEach(l=>{ l._a=l._b=l._tape=null; }); lockLine(); break;
     case 'goLine': setMode('train'); setStep('line'); break;
-    case 'noLineGo': Cal.state='noline-go'; renderCal(); logEv('▶️ Watching vehicles without a stop line', 'var(--blue)'); break;
+    case 'noLineGo': if (S.settings.det.motion) bgCapture(video); Cal.state='noline-go'; renderCal(); logEv('▶️ Watching vehicles without a stop line', 'var(--blue)'); break;
     case 'clearBg': S.ignore=[]; DB.kv('ignore', S.ignore); renderIgnore(); toast('Ignored spots forgotten'); break;
     case 'cropUse': { if (Crop.box){ const targets = $('#cropAll').checked ? S.pending.filter(p=>p.sel||p===Crop.p) : [Crop.p]; targets.forEach(p=>p.box={...Crop.box}); } else Crop.p.box=null; savePending(); renderTray(); $('#cropScrim').classList.remove('on'); break; }
     case 'cropClear': Crop.box=null; drawCrop(); break;
