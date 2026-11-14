@@ -582,6 +582,18 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
 .photobar button:hover{background:rgba(255,255,255,.28)}
 .photobar button.on{background:var(--sun);color:#3D2A00}
 
+/* Live layout: camera stays put, the right column scrolls on its own */
+@media (min-width:1101px){
+  #v-live{align-items:start}
+  #v-live > .col:not(.rightcol){position:sticky;top:calc(var(--navH) + 14px)}
+  #v-live .rightcol{position:sticky;top:calc(var(--navH) + 14px);max-height:calc(100vh - var(--navH) - 28px);overflow-y:auto;overscroll-behavior:contain;padding:2px 8px 18px 2px;scrollbar-width:thin;scrollbar-color:#C9D2E6 transparent}
+  #v-live .rightcol::-webkit-scrollbar{width:8px}
+  #v-live .rightcol::-webkit-scrollbar-thumb{background:#C9D2E6;border-radius:8px}
+  #v-live .rightcol::-webkit-scrollbar-thumb:hover{background:#AEB9D4}
+  /* the camera always fits the screen height, keeping its shape */
+  #v-live .stage{width:min(100%, calc((100vh - var(--navH) - 290px) * var(--ar, 1.7778)));margin:0 auto}
+}
+
 /* live calibration card */
 .calib{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:6;display:flex;gap:14px;align-items:center;background:rgba(255,255,255,.96);border-radius:20px;padding:14px 18px;box-shadow:0 20px 40px -18px rgba(27,33,64,.55);width:min(520px,calc(100% - 24px));animation:mpop .35s var(--spring) both}
 .calib b{font:800 19px var(--fd);display:block;line-height:1.2}
@@ -1033,13 +1045,9 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
             <button class="btn sm" data-act="resetStats">Reset counters</button>
           </div>
         </div>
-        <div class="card" style="--i:1">
-          <div class="cardhead"><span class="ico"><svg><use href="#i-list"/></svg></span><h3>What the AI did</h3><span class="grow"></span><button class="btn sm" data-act="clearLog">Clear</button></div>
-          <div class="log" id="log"></div>
-        </div>
       </div>
 
-      <div class="col">
+      <div class="col rightcol">
         <div class="card" style="--i:1">
           <div class="cardhead"><span class="ico" style="--c:var(--red-d);--c-s:var(--red-s)"><svg><use href="#i-signal"/></svg></span><h3>Traffic signal</h3><span class="grow"></span><span class="badge" id="sigSrc">Simulator</span></div>
           <div class="signal">
@@ -1077,6 +1085,10 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
         <div class="card algo-mini" style="--i:4">
           <div class="cardhead" style="margin-bottom:4px"><span class="ico" style="--c:var(--lilac-d);--c-s:var(--lilac-s)"><svg><use href="#i-brain"/></svg></span><h3>Brains in use</h3><span class="grow"></span><button class="btn sm" data-act="openRules"><svg><use href="#i-rule"/></svg>Rules</button></div>
           <div id="aiRows2"></div>
+        </div>
+        <div class="card" style="--i:5">
+          <div class="cardhead"><span class="ico"><svg><use href="#i-list"/></svg></span><h3>What the AI did</h3><span class="grow"></span><button class="btn sm" data-act="clearLog">Clear</button></div>
+          <div class="log" id="log"></div>
         </div>
       </div>
     </section>
@@ -1453,13 +1465,14 @@ function camUI(){
 video.addEventListener('loadedmetadata', () => {
   if (Photo.on) return;
   const w = video.videoWidth||1280, h = video.videoHeight||720;
-  ov.width = w; ov.height = h; $('#stage').style.aspectRatio = `${w}/${h}`;
+  ov.width = w; ov.height = h; setStageAR(w, h);
 });
 /* Live mode can run on the camera OR on uploaded photos ("photo mode"). SRC is whichever is in use. */
 const photoC = document.createElement('canvas'); photoC.id='photoC'; photoC.className='hide';
 video.insertAdjacentElement('afterend', photoC);   // sits on top of the video, under the AI overlay
 let SRC = video;
 const Photo = { on:false, list:[], i:0, auto:null };
+function setStageAR(w, h){ const st=$('#stage'); st.style.aspectRatio=`${w}/${h}`; st.style.setProperty('--ar', (w/h).toFixed(4)); }
 const VW = () => (SRC===video ? video.videoWidth : SRC.width) || ov.width || 1280, VH = () => (SRC===video ? video.videoHeight : SRC.height) || ov.height || 720;
 
 /* crop a box from any image source into a 224×224 square (padded) */
@@ -1836,12 +1849,12 @@ const LineEd = { active:false, pts:[], snap:null };
 function openFreeze(drawFn, w, h){
   freeze.width=w; freeze.height=h; LineEd.snap = document.createElement('canvas'); LineEd.snap.width=w; LineEd.snap.height=h;
   drawFn(LineEd.snap.getContext('2d')); LineEd.pts=[]; LineEd.active=true;
-  freeze.classList.remove('hide'); $('#stage').style.aspectRatio=`${w}/${h}`;
+  freeze.classList.remove('hide'); setStageAR(w, h);
   const r = findTape(LineEd.snap, w, h, null);
   if (r){ LineEd.pts=[r.a, r.b]; toast('✨ Found the tape – the line is placed on it. Tap two points to change it.', 'ok'); }
   drawFreeze(); camUI();
 }
-function closeFreeze(){ LineEd.active=false; LineEd.pts=[]; freeze.classList.add('hide'); $('#linehelp').classList.add('hide'); $('#saveLineBtn').disabled=true; if (Cam.on) $('#stage').style.aspectRatio=`${VW()}/${VH()}`; camUI(); }
+function closeFreeze(){ LineEd.active=false; LineEd.pts=[]; freeze.classList.add('hide'); $('#linehelp').classList.add('hide'); $('#saveLineBtn').disabled=true; if (Cam.on) setStageAR(VW(), VH()); camUI(); }
 function drawFreeze(){
   const w=freeze.width, h=freeze.height; fctx.drawImage(LineEd.snap,0,0);
   fctx.fillStyle='rgba(26,35,64,.15)'; fctx.fillRect(0,0,w,h);
@@ -2278,13 +2291,13 @@ async function photoStart(files){
 function showPhoto(i){
   Photo.i=(i+Photo.list.length)%Photo.list.length; const {img}=Photo.list[Photo.i];
   photoC.width=img.naturalWidth||img.width; photoC.height=img.naturalHeight||img.height; photoC.getContext('2d').drawImage(img,0,0);
-  ov.width=photoC.width; ov.height=photoC.height; $('#stage').style.aspectRatio=`${photoC.width}/${photoC.height}`;
+  ov.width=photoC.width; ov.height=photoC.height; setStageAR(photoC.width, photoC.height);
   photoC.classList.remove('hide'); $('#stage').classList.add('photo'); tracks=[]; LW.base={}; Judge.hist=[]; Judge.armed=true; Judge.last=0;
   camUI(); renderPhotoBar(); renderHud();
 }
 function photoStop(){
   clearInterval(Photo.auto); Photo.auto=null; Photo.on=false; SRC=video; photoC.classList.add('hide'); $('#stage').classList.remove('photo'); tracks=[]; LW.base={}; Judge.hist=[];
-  if (Cam.on){ ov.width=video.videoWidth||1280; ov.height=video.videoHeight||720; $('#stage').style.aspectRatio=`${ov.width}/${ov.height}`; if (S.mode==='live') startCalibration(); }
+  if (Cam.on){ ov.width=video.videoWidth||1280; ov.height=video.videoHeight||720; setStageAR(ov.width, ov.height); if (S.mode==='live') startCalibration(); }
   else { Hold.on=false; Judge.viol=false; send('SLEEP,1'); Cal.state='idle'; renderCal(); }
   camUI(); renderPhotoBar(); logEv('🖼️ Photo mode ended', 'var(--muted)');
 }
