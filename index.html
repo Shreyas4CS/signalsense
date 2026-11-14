@@ -1578,19 +1578,28 @@ document.addEventListener('pointerdown', e => { const b=e.target.closest('[data-
 document.addEventListener('change', async e => { const up=e.target.closest('[data-jup]'); if (!up) return; const files=[...up.files]; up.value=''; for (const f of files){ const img=await fileToImg(f); await captureJump(up.dataset.jup, img); } });
 
 /* live: classify the line strip a few times a second, smooth it, and react */
-const Judge = { hist:[], state:null, conf:0, last:0, viol:false, rule:null };
+const Judge = { hist:[], state:null, conf:0, last:0, viol:false, rule:null, armed:false, unsureT:0 };
 function judgeActive(){ return S.settings.det.useJudge && S.settings.det.jumpMode!=='track' && S.jSamples.length>0 && new Set(S.jSamples.map(x=>x.cls)).size>=2 && MP.ready; }
 function judgeStep(t){
   if (!judgeActive()){ Judge.state=null; return; }
   if (t-Judge.last<300) return; Judge.last=t;
   const p=predict('j', embedCanvas(roiCrop(SRC))); if (!p) return;
-  Judge.hist.push(p.conf>=.55 ? p.cls : null); if (Judge.hist.length>5) Judge.hist.shift();
-  const cnt={}; Judge.hist.forEach(c=>{ if (c) cnt[c]=(cnt[c]||0)+1; });
-  const top=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0], next = top && top[1]>=3 ? top[0] : null;
+  // every reading counts – a low-confidence reading is a "not sure" vote (it never keeps an old answer alive)
+  Judge.hist.push(p.conf>=.55 ? p.cls : 'unsure'); if (Judge.hist.length>5) Judge.hist.shift();
+  const cnt={}; Judge.hist.forEach(c=>{ cnt[c]=(cnt[c]||0)+1; });
+  const top=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0], next = top && top[1]>=3 ? top[0] : 'unsure';
   Judge.conf=p.conf;
-  if (!next || next===Judge.state) return;
-  const prev=Judge.state; Judge.state=next;
-  if (next==='crossed' && prev){   // a vehicle just went over the line
+  if (next==='behind' || next==='empty') Judge.armed=true;          // a new crossing can be counted after this
+  if (next==='unsure'){ if (!Judge.unsureT) Judge.unsureT=t; } else Judge.unsureT=0;
+  // hold ends when the AI no longer says "crossed": straight away for behind/empty, after 2 s of "not sure"
+  if (Judge.viol && next!=='crossed' && (next!=='unsure' || t-Judge.unsureT>2000)){
+    Judge.viol=false;
+    logEv(next==='behind' ? '↩️ Line-jump AI: the vehicle went back behind the line – red can finish now' : next==='empty' ? '✅ Line-jump AI: the road is empty – red can finish now' : '🤔 Line-jump AI is not sure a vehicle is over the line any more – red can finish now', 'var(--green)');
+  }
+  if (next===Judge.state){ renderHud(); return; }
+  Judge.state=next;
+  if (next==='crossed' && Judge.armed){   // a vehicle just went over the line (counted once until it goes back)
+    Judge.armed=false;
     setStat('cross', Stats.cross+1);
     if (Sig.state==='R'){ setStat('viol', Stats.viol+1); const st=$('#stage'); st.classList.remove('viol'); void st.offsetWidth; st.classList.add('viol'); logEv('🚨 Line-jump AI: a vehicle crossed the line on RED!', 'var(--red)'); }
     else logEv('🚗 Line-jump AI: a vehicle crossed the line', 'var(--teal)');
@@ -1600,8 +1609,6 @@ function judgeStep(t){
       if (r.action==='holdRed'){ if (Sig.state==='R'){ Judge.viol=true; Judge.rule=r.id; r._last=now; toast('Rule: crossed on RED → red stays on until the vehicle goes back', 'bad'); } continue; }
       if (now-(r._last||-1e9) < (+r.cool||3)*1000) continue; r._last=now; doAction(r, 'cross', {name:S.lines[0]?.name||'the line'});
     }
-  } else if (Judge.viol && (next==='behind' || next==='empty')){
-    Judge.viol=false; logEv(next==='behind' ? '↩️ Line-jump AI: the vehicle went back behind the line – red can finish now' : '✅ Line-jump AI: the road is empty – red can finish now', 'var(--green)');
   }
   renderHud();
 }
@@ -2026,7 +2033,7 @@ function renderGates(force){
 }
 function renderHud(){
   const st=Sig.state, c = st==='R'?'var(--red)':st==='Y'?'var(--sun)':'var(--green)';
-  $('#hud').innerHTML = (S.mode==='live' && (Cam.on || Photo.on)) ? `<span class="hp" style="--c:${c}"><i></i>${st==='R'?'RED':st==='Y'?'YELLOW':'GREEN'} · ${Sig.remain}s</span>${Mic.on?`<span class="hp" style="--c:var(--lilac)"><i></i>${Math.round(Mic.dbS)} dB</span>`:''}${Hold.on?`<span class="hp" style="--c:var(--red)"><i></i>Holding RED · gate closed</span>`:''}${Judge.state && judgeActive()?`<span class="hp" style="--c:${(JCLASSES.find(c=>c.id===Judge.state)||{}).color}"><i></i>Line AI: ${(JCLASSES.find(c=>c.id===Judge.state)||{}).name}</span>`:''}${Cal.state==='locked'?`<span class="hp" style="--c:var(--blue)"><i></i>🔒 Line locked · watching vehicles</span>`:Cal.state==='search'?`<span class="hp" style="--c:var(--sun)"><i></i>Camera moved – finding the line…</span>`:Cal.state==='calib'?`<span class="hp" style="--c:var(--sun)"><i></i>Calibrating…</span>`:''}` : '';
+  $('#hud').innerHTML = (S.mode==='live' && (Cam.on || Photo.on)) ? `<span class="hp" style="--c:${c}"><i></i>${st==='R'?'RED':st==='Y'?'YELLOW':'GREEN'} · ${Sig.remain}s</span>${Mic.on?`<span class="hp" style="--c:var(--lilac)"><i></i>${Math.round(Mic.dbS)} dB</span>`:''}${Hold.on?`<span class="hp" style="--c:var(--red)"><i></i>Holding RED · gate closed</span>`:''}${Judge.state && judgeActive()?(()=>{ const c=JCLASSES.find(k=>k.id===Judge.state); return c ? `<span class="hp" style="--c:${c.color}"><i></i>Line AI: ${c.name} · ${Math.round(Judge.conf*100)}%</span>` : `<span class="hp" style="--c:var(--sun)"><i></i>Line AI: not sure</span>`; })():''}${Cal.state==='locked'?`<span class="hp" style="--c:var(--blue)"><i></i>🔒 Line locked · watching vehicles</span>`:Cal.state==='search'?`<span class="hp" style="--c:var(--sun)"><i></i>Camera moved – finding the line…</span>`:Cal.state==='calib'?`<span class="hp" style="--c:var(--sun)"><i></i>Calibrating…</span>`:''}` : '';
 }
 
 /* =====================================================================
@@ -2272,7 +2279,7 @@ function showPhoto(i){
   Photo.i=(i+Photo.list.length)%Photo.list.length; const {img}=Photo.list[Photo.i];
   photoC.width=img.naturalWidth||img.width; photoC.height=img.naturalHeight||img.height; photoC.getContext('2d').drawImage(img,0,0);
   ov.width=photoC.width; ov.height=photoC.height; $('#stage').style.aspectRatio=`${photoC.width}/${photoC.height}`;
-  photoC.classList.remove('hide'); $('#stage').classList.add('photo'); tracks=[]; LW.base={}; Judge.hist=[];
+  photoC.classList.remove('hide'); $('#stage').classList.add('photo'); tracks=[]; LW.base={}; Judge.hist=[]; Judge.armed=true; Judge.last=0;
   camUI(); renderPhotoBar(); renderHud();
 }
 function photoStop(){
