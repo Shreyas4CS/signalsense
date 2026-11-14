@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>SignalSense · AI Smart Traffic Lab | CognoSpace</title>
 <meta name="theme-color" content="#3D6BFF">
+<!-- Browser tab icon: put coggy-icon.png in the "logos" folder (change the name here if it is .ico / .svg / .jpg) -->
+<link rel="icon" type="image/png" href="logos/coggy-icon.png">
+<link rel="apple-touch-icon" href="logos/coggy-icon.png">
 <meta name="description" content="SignalSense: teach an AI to see toy vehicles, hear horns and run a smart traffic signal on Arduino UNO R4 over Bluetooth. Designed and developed by CognoSpace.">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@700;800&display=swap" rel="stylesheet">
@@ -2244,18 +2247,30 @@ function drawOverlay(t){
 /* =====================================================================
    PHOTO MODE (Live) – run the whole live AI on uploaded photos
    ===================================================================== */
+const MAX_PHOTOS = 100;
 async function photoStart(files){
-  const list=[]; for (const f of files){ try{ list.push({img:await fileToImg(f), name:f.name}); }catch(e){} }
+  if (files.length > MAX_PHOTOS){ toast(`That's ${files.length} photos – using the first ${MAX_PHOTOS}.`, 'warn'); files = files.slice(0, MAX_PHOTOS); }
+  if (files.length > 10) toast(`Loading ${files.length} photos…`);
+  const list=[];
+  for (const f of files){
+    try{
+      // shrink big phone photos so 40+ photos fit in memory
+      const im=await fileToImg(f), sc=Math.min(1, 1280/im.naturalWidth), c=document.createElement('canvas');
+      c.width=Math.round(im.naturalWidth*sc); c.height=Math.round(im.naturalHeight*sc); c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+      URL.revokeObjectURL(im.src); list.push({img:c, name:f.name});
+    }catch(e){ console.warn('skip', f.name, e); }
+  }
   if (!list.length) return;
+  for (let i=list.length-1;i>0;i--){ const j=Math.random()*(i+1)|0; [list[i],list[j]]=[list[j],list[i]]; }   // jumble the order
   const wasOn=Photo.on; Object.assign(Photo, {list, i:0, on:true}); SRC=photoC;
   showPhoto(0); send('SLEEP,0'); loadMP();
   if (!wasOn || Cal.state==='idle' || Cal.state==='failed') startCalibration();
-  logEv(`🖼️ Photo mode: testing ${list.length} photo${list.length>1?'s':''}`, 'var(--blue)');
-  toast(`Photo mode: ${list.length} photo${list.length>1?'s':''} – the live AI is checking them`, 'ok');
+  logEv(`🖼️ Photo mode: ${list.length} photo${list.length>1?'s':''} in random order`, 'var(--blue)');
+  toast(`Photo mode: ${list.length} photo${list.length>1?'s':''} shuffled – use ▶ or ⏵ Auto to go through them`, 'ok');
 }
 function showPhoto(i){
   Photo.i=(i+Photo.list.length)%Photo.list.length; const {img}=Photo.list[Photo.i];
-  photoC.width=img.naturalWidth; photoC.height=img.naturalHeight; photoC.getContext('2d').drawImage(img,0,0);
+  photoC.width=img.naturalWidth||img.width; photoC.height=img.naturalHeight||img.height; photoC.getContext('2d').drawImage(img,0,0);
   ov.width=photoC.width; ov.height=photoC.height; $('#stage').style.aspectRatio=`${photoC.width}/${photoC.height}`;
   photoC.classList.remove('hide'); $('#stage').classList.add('photo'); tracks=[]; LW.base={}; Judge.hist=[];
   camUI(); renderPhotoBar(); renderHud();
