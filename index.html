@@ -570,6 +570,15 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
 .tcard b{font:800 18px var(--fd);display:block}
 .tcard .bars{margin-top:6px}
 
+.stage #photoC{object-fit:fill}
+.stage.photo .hud{max-width:calc(100% - 330px)}
+.photobar{position:absolute;right:12px;top:12px;z-index:6;display:flex;align-items:center;gap:6px;background:rgba(27,33,64,.9);color:#fff;border-radius:16px;padding:6px 8px 6px 12px;box-shadow:0 10px 24px -12px rgba(0,0,0,.5);animation:mpop .3s var(--spring) both}
+.photobar .pb-t{font:800 14px var(--fd);display:flex;flex-direction:column;line-height:1.1;margin-right:4px;max-width:180px}
+.photobar .pb-t small{font:600 11px var(--fb);opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.photobar button{min-width:34px;height:32px;border-radius:10px;background:rgba(255,255,255,.14);color:#fff;font-weight:800;font-size:13px;padding:0 9px;transition:background .2s}
+.photobar button:hover{background:rgba(255,255,255,.28)}
+.photobar button.on{background:var(--sun);color:#3D2A00}
+
 /* live calibration card */
 .calib{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:6;display:flex;gap:14px;align-items:center;background:rgba(255,255,255,.96);border-radius:20px;padding:14px 18px;box-shadow:0 20px 40px -18px rgba(27,33,64,.55);width:min(520px,calc(100% - 24px));animation:mpop .35s var(--spring) both}
 .calib b{font:800 19px var(--fd);display:block;line-height:1.2}
@@ -1014,6 +1023,7 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
             <button class="btn pri" data-act="cam"><svg><use href="#i-cam"/></svg><span>Turn camera on</span></button>
             <button class="btn" data-act="flip"><svg><use href="#i-flip"/></svg>Switch camera</button>
             <button class="btn lilac" data-act="mic"><svg><use href="#i-mic"/></svg><span>Turn mic on</span></button>
+            <label class="btn" title="Run the live AI on photos instead of the camera"><svg><use href="#i-up"/></svg>Test with photos<input type="file" accept="image/*" multiple hidden data-photo></label>
             <button class="btn sm hidden" data-act="recal" id="recalBtn" style="margin-left:auto">↻ Recalibrate line</button>
             <button class="btn sm sun" data-act="learnBg" title="Take all vehicles off the road, then press"><svg><use href="#i-road"/></svg>Learn empty road</button>
             <button class="btn sm hidden" data-act="clearBg" id="clearBgBtn"></button>
@@ -1083,6 +1093,7 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
   <div class="empty" id="stageEmpty"><div><div class="toyroad"><div class="car"></div><div class="car c2"></div><div class="car c3"></div></div><h4>Camera is off</h4><p>Press “Turn camera on” to start</p></div></div>
   <video id="video" playsinline muted autoplay></video>
   <canvas id="ov"></canvas>
+  <div class="photobar hidden" id="photoBar"></div>
   <canvas id="freeze" class="hide"></canvas>
   <div class="hud" id="hud"></div>
   <div class="linehelp hide" id="linehelp">Tap point 1 of the line</div>
@@ -1416,10 +1427,10 @@ async function camStart(){
     Cam.stream = await navigator.mediaDevices.getUserMedia({video:{...v, width:{ideal:1280}, height:{ideal:720}}, audio:false});
     video.srcObject = Cam.stream; await video.play().catch(()=>{});
     Cam.on = true; camUI(); loadMP(); send('SLEEP,0'); logEv('📷 Camera on – traffic signal running', 'var(--green)');
-    if (S.mode==='live'){ if (video.readyState>=2) startCalibration(); else video.addEventListener('loadeddata', startCalibration, {once:true}); }
+    if (S.mode==='live' && !Photo.on){ if (video.readyState>=2) startCalibration(); else video.addEventListener('loadeddata', startCalibration, {once:true}); }
   } catch(e){ console.error(e); toast('Camera blocked or not found. Allow camera access in the browser.', 'bad'); Cam.on=false; camUI(); }
 }
-function camStop(){ Cam.stream?.getTracks().forEach(t=>t.stop()); Cam.stream=null; Cam.on=false; video.srcObject=null; tracks=[]; Hold.on=false; Judge.viol=false; send('SLEEP,1'); logEv('📷 Camera off – traffic signal switched off', 'var(--muted)'); Cal.state='idle'; renderCal(); camUI(); }
+function camStop(){ Cam.stream?.getTracks().forEach(t=>t.stop()); Cam.stream=null; Cam.on=false; video.srcObject=null; tracks=[]; if (!Photo.on){ Hold.on=false; Judge.viol=false; send('SLEEP,1'); logEv('📷 Camera off – traffic signal switched off', 'var(--muted)'); } if (!Photo.on){ Cal.state='idle'; renderCal(); } camUI(); }
 async function camFlip(){
   const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput');
   if (devs.length > 1){
@@ -1431,16 +1442,22 @@ async function camFlip(){
 }
 function camUI(){
   $$('[data-act="cam"]').forEach(b => { b.classList.toggle('on', Cam.on); b.classList.toggle('pri', !Cam.on); b.querySelector('span').textContent = Cam.on ? 'Turn camera off' : 'Turn camera on'; b.querySelector('use').setAttribute('href', Cam.on ? '#i-camoff' : '#i-cam'); });
-  $('#stageEmpty').classList.toggle('hide', Cam.on || !freeze.classList.contains('hide'));
+  $('#stageEmpty').classList.toggle('hide', Cam.on || Photo.on || !freeze.classList.contains('hide'));
   const label = Cam.stream?.getVideoTracks()[0]?.label;
   $('#camInfo').textContent = Cam.on ? (label ? label.slice(0,28) : 'Camera on') : 'Camera off';
   $('#camInfo').className = 'badge' + (Cam.on ? ' ok' : '');
 }
 video.addEventListener('loadedmetadata', () => {
+  if (Photo.on) return;
   const w = video.videoWidth||1280, h = video.videoHeight||720;
   ov.width = w; ov.height = h; $('#stage').style.aspectRatio = `${w}/${h}`;
 });
-const VW = () => video.videoWidth || ov.width || 1280, VH = () => video.videoHeight || ov.height || 720;
+/* Live mode can run on the camera OR on uploaded photos ("photo mode"). SRC is whichever is in use. */
+const photoC = document.createElement('canvas'); photoC.id='photoC'; photoC.className='hide';
+video.insertAdjacentElement('afterend', photoC);   // sits on top of the video, under the AI overlay
+let SRC = video;
+const Photo = { on:false, list:[], i:0, auto:null };
+const VW = () => (SRC===video ? video.videoWidth : SRC.width) || ov.width || 1280, VH = () => (SRC===video ? video.videoHeight : SRC.height) || ov.height || 720;
 
 /* crop a box from any image source into a 224×224 square (padded) */
 const cropC = Object.assign(document.createElement('canvas'), {width:224, height:224}), cropX = cropC.getContext('2d');
@@ -1476,9 +1493,9 @@ function learnBackground(){
 }
 function bgStep(t){
   const W=VW(), H=VH(); BgLearn.frames++;
-  for (const d of detect(video, true)){ const z={x:d.x/W, y:d.y/H, w:d.w/W, h:d.h/H}; const m=BgLearn.seen.find(o=>iou(o,z)>.3); if (m){ m.n++; } else BgLearn.seen.push({...z, n:1}); }
+  for (const d of detect(SRC, true)){ const z={x:d.x/W, y:d.y/H, w:d.w/W, h:d.h/H}; const m=BgLearn.seen.find(o=>iou(o,z)>.3); if (m){ m.n++; } else BgLearn.seen.push({...z, n:1}); }
   if (t >= BgLearn.until){
-    BgLearn.until=0; LW.base={}; bgCapture(video);
+    BgLearn.until=0; LW.base={}; if (SRC===video) bgCapture(video);
     const add = BgLearn.seen.filter(z=>z.n >= Math.max(2, BgLearn.frames*.15)).map(({x,y,w,h})=>({x,y,w,h}));
     S.ignore = [...S.ignore, ...add.filter(z=>S.ignore.every(o=>iou(o,z)<.5))]; DB.kv('ignore', S.ignore); renderIgnore();
     const b=$('[data-act="learnBg"]'); b.disabled=false; b.innerHTML=icon('i-road')+'Learn empty road';
@@ -1521,7 +1538,7 @@ function roiBox(W, H, Lgiven){
 // for the live camera use the locked line; for an uploaded photo find the tape inside that photo
 function roiFor(src){
   const W=src.videoWidth||src.naturalWidth||src.width, H=src.videoHeight||src.naturalHeight||src.height;
-  if (src===video) return roiBox(W,H);
+  if (src===SRC) return roiBox(W,H);   // live source: use the locked line
   const ln=S.lines[0], tape=findTape(src, W, H, ln ? lineOf(ln) : null);
   if (!tape) return roiBox(W,H);
   const L = ln && ln.rel ? {a:fromRel(tape, ln.rel.a, W/H), b:fromRel(tape, ln.rel.b, W/H)} : tape;
@@ -1563,7 +1580,7 @@ function judgeActive(){ return S.settings.det.useJudge && S.settings.det.jumpMod
 function judgeStep(t){
   if (!judgeActive()){ Judge.state=null; return; }
   if (t-Judge.last<300) return; Judge.last=t;
-  const p=predict('j', embedCanvas(roiCrop(video))); if (!p) return;
+  const p=predict('j', embedCanvas(roiCrop(SRC))); if (!p) return;
   Judge.hist.push(p.conf>=.55 ? p.cls : null); if (Judge.hist.length>5) Judge.hist.shift();
   const cnt={}; Judge.hist.forEach(c=>{ if (c) cnt[c]=(cnt[c]||0)+1; });
   const top=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0], next = top && top[1]>=3 ? top[0] : null;
@@ -1765,7 +1782,7 @@ function alignLines(force){
   if (!force && !S.settings.det.autoAlign){ LW.lock=true; return; }   // follow switched off: keep the line where it was locked
   const A=VW()/VH(); let locked=0;
   for (const ln of S.lines){
-    const cur=lineOf(ln); let r=findTape(video, VW(), VH(), ln._tape || cur); if (!r) continue;
+    const cur=lineOf(ln); let r=findTape(SRC, VW(), VH(), ln._tape || cur); if (!r) continue;
     if (!ln.rel){   // older line: learn how it sits on the tape the first time we see them together
       if (perpTo(cur, r, A) > .15) continue;
       ln.rel={a:relTo(r, ln.a, A), b:relTo(r, ln.b, A)}; DB.put('lines', plainLine(ln));
@@ -1787,7 +1804,7 @@ function alignLines(force){
 const LW = { c:document.createElement('canvas'), base:{}, run:{} };
 function lineWatch(t){
   if (!S.lines.length) return;
-  const W=192, H=Math.round(W*VH()/VW()), c=LW.c; c.width=W; c.height=H; const x=c.getContext('2d',{willReadFrequently:true}); x.drawImage(video,0,0,W,H);
+  const W=192, H=Math.round(W*VH()/VW()), c=LW.c; c.width=W; c.height=H; const x=c.getContext('2d',{willReadFrequently:true}); x.drawImage(SRC,0,0,W,H);
   const img=x.getImageData(0,0,W,H).data, NS=48;
   for (const ln of S.lines){
     const L=lineOf(ln), cur=new Float32Array(NS*3);
@@ -2006,7 +2023,7 @@ function renderGates(force){
 }
 function renderHud(){
   const st=Sig.state, c = st==='R'?'var(--red)':st==='Y'?'var(--sun)':'var(--green)';
-  $('#hud').innerHTML = (S.mode==='live' && (Cam.on)) ? `<span class="hp" style="--c:${c}"><i></i>${st==='R'?'RED':st==='Y'?'YELLOW':'GREEN'} · ${Sig.remain}s</span>${Mic.on?`<span class="hp" style="--c:var(--lilac)"><i></i>${Math.round(Mic.dbS)} dB</span>`:''}${Hold.on?`<span class="hp" style="--c:var(--red)"><i></i>Holding RED · gate closed</span>`:''}${Judge.state && judgeActive()?`<span class="hp" style="--c:${(JCLASSES.find(c=>c.id===Judge.state)||{}).color}"><i></i>Line AI: ${(JCLASSES.find(c=>c.id===Judge.state)||{}).name}</span>`:''}${Cal.state==='locked'?`<span class="hp" style="--c:var(--blue)"><i></i>🔒 Line locked · watching vehicles</span>`:Cal.state==='search'?`<span class="hp" style="--c:var(--sun)"><i></i>Camera moved – finding the line…</span>`:Cal.state==='calib'?`<span class="hp" style="--c:var(--sun)"><i></i>Calibrating…</span>`:''}` : '';
+  $('#hud').innerHTML = (S.mode==='live' && (Cam.on || Photo.on)) ? `<span class="hp" style="--c:${c}"><i></i>${st==='R'?'RED':st==='Y'?'YELLOW':'GREEN'} · ${Sig.remain}s</span>${Mic.on?`<span class="hp" style="--c:var(--lilac)"><i></i>${Math.round(Mic.dbS)} dB</span>`:''}${Hold.on?`<span class="hp" style="--c:var(--red)"><i></i>Holding RED · gate closed</span>`:''}${Judge.state && judgeActive()?`<span class="hp" style="--c:${(JCLASSES.find(c=>c.id===Judge.state)||{}).color}"><i></i>Line AI: ${(JCLASSES.find(c=>c.id===Judge.state)||{}).name}</span>`:''}${Cal.state==='locked'?`<span class="hp" style="--c:var(--blue)"><i></i>🔒 Line locked · watching vehicles</span>`:Cal.state==='search'?`<span class="hp" style="--c:var(--sun)"><i></i>Camera moved – finding the line…</span>`:Cal.state==='calib'?`<span class="hp" style="--c:var(--sun)"><i></i>Calibrating…</span>`:''}` : '';
 }
 
 /* =====================================================================
@@ -2044,7 +2061,7 @@ function pushConfig(save){
   const T=S.settings.timing; send(`CFG,${T.green},${T.yellow},${T.red},${T.maxPhase}`);
   S.settings.servos.forEach((s,i)=>send(`SRV,${i},${s.open},${s.close},${i===0||s.mode==='main'?0:1}`));
   if (save) send('SAVE');
-  send(Cam.on ? 'SLEEP,0' : 'SLEEP,1');
+  send(Cam.on || Photo.on ? 'SLEEP,0' : 'SLEEP,1');
 }
 
 /* =====================================================================
@@ -2068,7 +2085,7 @@ function updateTracks(dets, t){
     // ask the vehicle brain what this box is (twice a second per vehicle)
     if (S.vSamples.length && t-best.lastCls>500){
       best.lastCls=t;
-      const p = predict('v', embedCanvas(cropTo(video, d)));
+      const p = predict('v', embedCanvas(cropTo(SRC, d)));
       // Neural network: trust its probability, be a bit more relaxed on "looks like a photo I saw" (helps unseen toys)
       const nn = algoOf('v')==='nn' && Brain.v.mlp;
       if (p && p.conf >= (nn?.6:.5) && p.sim >= D.simThresh/100 - (nn?.12:0)){ best.label=p.cls; best.conf=p.conf; const c=clsById('v',p.cls); if (c) fire('vehicle', {label:c.id, name:c.name, track:best}); }
@@ -2203,7 +2220,7 @@ function drawBox(x, b, color, label, sc, alert){
 }
 function drawOverlay(t){
   const W=ov.width, H=ov.height, sc=W/640; octx.clearRect(0,0,W,H);
-  if (!Cam.on) return;
+  if (!Cam.on && !Photo.on) return;
   const showLines = S.mode==='live' || S.step==='line';
   const calCol = Cal.state==='calib' ? '#FFB020' : Cal.state==='found' ? '#22B573' : Cal.state==='search' ? '#8B95B2' : null;
   if (showLines && !(S.mode==='live' && Cal.state==='calib' && !S.lines.some(l=>l._tape))) S.lines.forEach(l0 => { const l={...lineOf(l0), name:l0.name}; drawLine(octx, {x:l.a.x*W, y:l.a.y*H}, {x:l.b.x*W, y:l.b.y*H}, S.mode==='live' ? (calCol || (Sig.state==='R'?'#F04A5A':Sig.state==='Y'?'#E0A800':'#22B573')) : '#3D6BFF', l.name, sc, S.mode==='live'); });
@@ -2225,13 +2242,49 @@ function drawOverlay(t){
   }
 }
 /* =====================================================================
+   PHOTO MODE (Live) – run the whole live AI on uploaded photos
+   ===================================================================== */
+async function photoStart(files){
+  const list=[]; for (const f of files){ try{ list.push({img:await fileToImg(f), name:f.name}); }catch(e){} }
+  if (!list.length) return;
+  const wasOn=Photo.on; Object.assign(Photo, {list, i:0, on:true}); SRC=photoC;
+  showPhoto(0); send('SLEEP,0'); loadMP();
+  if (!wasOn || Cal.state==='idle' || Cal.state==='failed') startCalibration();
+  logEv(`🖼️ Photo mode: testing ${list.length} photo${list.length>1?'s':''}`, 'var(--blue)');
+  toast(`Photo mode: ${list.length} photo${list.length>1?'s':''} – the live AI is checking them`, 'ok');
+}
+function showPhoto(i){
+  Photo.i=(i+Photo.list.length)%Photo.list.length; const {img}=Photo.list[Photo.i];
+  photoC.width=img.naturalWidth; photoC.height=img.naturalHeight; photoC.getContext('2d').drawImage(img,0,0);
+  ov.width=photoC.width; ov.height=photoC.height; $('#stage').style.aspectRatio=`${photoC.width}/${photoC.height}`;
+  photoC.classList.remove('hide'); $('#stage').classList.add('photo'); tracks=[]; LW.base={}; Judge.hist=[];
+  camUI(); renderPhotoBar(); renderHud();
+}
+function photoStop(){
+  clearInterval(Photo.auto); Photo.auto=null; Photo.on=false; SRC=video; photoC.classList.add('hide'); $('#stage').classList.remove('photo'); tracks=[]; LW.base={}; Judge.hist=[];
+  if (Cam.on){ ov.width=video.videoWidth||1280; ov.height=video.videoHeight||720; $('#stage').style.aspectRatio=`${ov.width}/${ov.height}`; if (S.mode==='live') startCalibration(); }
+  else { Hold.on=false; Judge.viol=false; send('SLEEP,1'); Cal.state='idle'; renderCal(); }
+  camUI(); renderPhotoBar(); logEv('🖼️ Photo mode ended', 'var(--muted)');
+}
+function renderPhotoBar(){
+  const el=$('#photoBar'); if (!el) return;
+  el.classList.toggle('hidden', !Photo.on);
+  if (!Photo.on) return;
+  const n=Photo.list.length, cur=Photo.list[Photo.i];
+  el.innerHTML = `<span class="pb-t">🖼️ ${Photo.i+1}/${n}<small>${esc(cur.name)}</small></span>
+    ${n>1?`<button data-act="phPrev" title="Previous">◀</button><button data-act="phNext" title="Next">▶</button><button data-act="phAuto" class="${Photo.auto?'on':''}" title="Next photo every 3 s">${Photo.auto?'⏸ Auto':'⏵ Auto'}</button>`:''}
+    <button data-act="phStop" title="Back to the camera">✕</button>`;
+}
+document.addEventListener('change', e => { const el=e.target.closest('[data-photo]'); if (!el) return; const files=[...el.files]; el.value=''; if (files.length) photoStart(files); });
+
+/* =====================================================================
    LIVE CALIBRATION
    camera on → find the stop line on the tape (vehicles are NOT detected yet)
    → line steady → "Lock line & start" → vehicles are detected, the line keeps following the tape
    ===================================================================== */
 const Cal = { state:'idle', hist:[], t0:0, lostT:0, prog:0 };
 function startCalibration(){
-  if (S.mode!=='live' || !Cam.on){ Cal.state='idle'; renderCal(); return; }
+  if (S.mode!=='live' || !(Cam.on || Photo.on)){ Cal.state='idle'; renderCal(); return; }
   tracks=[]; Hold.on=false; LW.base={};
   if (!S.lines.length){ Cal.state='noline'; renderCal(); return; }
   S.lines.forEach(l=>{ l._tape=null; });
@@ -2280,8 +2333,8 @@ function blobDetect(src){
 }
 /* MediaPipe boxes + empty-road blobs that MediaPipe missed */
 function detectAll(){
-  const dets=detect(video);
-  if (!S.settings.det.motion || !BGM.ready) return dets;
+  const dets=detect(SRC);
+  if (!S.settings.det.motion || !BGM.ready || SRC!==video) return dets;   // empty-road compare only works on the live camera
   const W=VW(), H=VH();
   let blobs=blobDetect(video);
   if (S.ignore.length) blobs=blobs.filter(b=>S.ignore.every(z=>iou(b,{x:z.x*W,y:z.y*H,w:z.w*W,h:z.h*H})<.35));
@@ -2290,7 +2343,7 @@ function detectAll(){
 }
 
 function lockLine(){
-  if (S.settings.det.motion) bgCapture(video);
+  if (S.settings.det.motion && SRC===video) bgCapture(video);
   Cal.state='locked'; tracks=[]; LW.base={}; renderCal();
   logEv('🔒 Stop line locked – the AI is now watching for vehicles', 'var(--blue)'); toast('🔒 Line locked – vehicle detection started', 'ok');
 }
@@ -2302,7 +2355,7 @@ function calStep(t){
     const ok=Cal.hist.filter(Boolean), last=ok[ok.length-1];
     const steady = last ? ok.filter(h=>Math.hypot(h.x-last.x, h.y-last.y)<.02 && Math.abs(h.ang-last.ang)<.06).length : 0;
     Cal.prog = Math.min(1, steady/6);
-    if (steady>=6){ Cal.state='found'; logEv('✅ Stop line found on the tape', 'var(--green)'); }
+    if (steady>=6){ Cal.state='found'; logEv('✅ Stop line found on the tape', 'var(--green)'); if (Photo.on){ lockLine(); return; } }
     else if (t-Cal.t0>12000) Cal.state='failed';
     renderCal();
   } else if (Cal.state==='found'){ alignLines(true); }
@@ -2322,14 +2375,14 @@ function renderCal(){
     failed:`<div class="calok bad">!</div><div><b>Can't find the black tape</b><p>Make sure the camera can see the whole tape, with good light.</p><div class="row" style="margin-top:10px"><button class="btn sun" data-act="recal">↻ Try again</button><button class="btn sm" data-act="useSaved">Use the saved line</button></div></div>`,
     noline:`<div class="calok bad">!</div><div><b>No stop line saved yet</b><p>Draw one in Training → Road line, or watch vehicles without a line.</p><div class="row" style="margin-top:10px"><button class="btn blue" data-act="goLine">Draw a line</button><button class="btn sm" data-act="noLineGo">Start without a line</button></div></div>`
   }[st];
-  el.classList.toggle('hidden', !box || S.mode!=='live' || !Cam.on);
+  el.classList.toggle('hidden', !box || S.mode!=='live' || !(Cam.on || Photo.on));
   if (box) el.innerHTML = box;
   const rb=$('#recalBtn'); if (rb) rb.classList.toggle('hidden', !(st==='locked' || st==='search'));
   renderHud();
 }
 function loop(t){
   requestAnimationFrame(loop);
-  const live = S.mode==='live' && Cam.on && video.readyState>=2;
+  const live = S.mode==='live' && (Photo.on || (Cam.on && video.readyState>=2));
   if (live && t-(LW.alignT||0)>250){ LW.alignT=t; try{ calStep(t); }catch(e){ console.warn(e); } }
   if (live && Cal.state==='search') holdStep(t);   // keep a red-light hold going while the line is found again
   if (live && detecting() && MP.ready && t-lastDetT>70){   // vehicles are only detected after the line is locked
@@ -2528,6 +2581,7 @@ function setMode(m){
   $$('#modes button').forEach(b=>b.setAttribute('aria-selected', b.dataset.mode===m));
   movePill(); $$('.view').forEach(v=>v.classList.toggle('on', v.id==='v-'+m));
   (m==='live' ? $('#liveSlot') : $('#trainSlot')).append($('#stage'));
+  if (m!=='live' && Photo.on) photoStop();
   if (m==='live'){ closeFreeze(); tracks=[]; startCalibration(); } else { Cal.state='idle'; renderCal(); } trainDets=[];
   renderHud(); renderSignal(false);
   if (m==='live' && Brain.v.stale && S.vSamples.length && S.algo.v==='nn') toast('Tip: you added new data – train the AI again for best results.', 'warn');
@@ -2582,13 +2636,17 @@ document.addEventListener('click', async e => {
     case 'addS': addClass('s'); break;
     case 'delV': { const c=clsById('v',id); if (!confirm(`Delete “${c.name}” and all its photos?`)) return; S.vClasses=S.vClasses.filter(x=>x.id!==id); S.vSamples.filter(s=>s.cls===id).forEach(s=>DB.del('vehicles',s.id)); S.vSamples=S.vSamples.filter(s=>s.cls!==id); Brain.v.stale=true; saveMeta(); renderV(); renderCounts(); break; }
     case 'capture': capturePhoto(); break;
+    case 'phPrev': showPhoto(Photo.i-1); break;
+    case 'phNext': showPhoto(Photo.i+1); break;
+    case 'phAuto': if (Photo.auto){ clearInterval(Photo.auto); Photo.auto=null; } else Photo.auto=setInterval(()=>showPhoto(Photo.i+1), 3000); renderPhotoBar(); break;
+    case 'phStop': photoStop(); break;
     case 'closeTest': $('#testRes-'+b.dataset.k).classList.add('hidden'); break;
     case 'learnBg': if (!detecting()){ toast('Lock the stop line first 🔒'); return; } learnBackground(); break;
     case 'lockLine': lockLine(); break;
     case 'recal': startCalibration(); toast('Calibrating the stop line again…'); break;
     case 'useSaved': S.lines.forEach(l=>{ l._a=l._b=l._tape=null; }); lockLine(); break;
     case 'goLine': setMode('train'); setStep('line'); break;
-    case 'noLineGo': if (S.settings.det.motion) bgCapture(video); Cal.state='noline-go'; renderCal(); logEv('▶️ Watching vehicles without a stop line', 'var(--blue)'); break;
+    case 'noLineGo': if (S.settings.det.motion && SRC===video) bgCapture(video); Cal.state='noline-go'; renderCal(); logEv('▶️ Watching vehicles without a stop line', 'var(--blue)'); break;
     case 'clearBg': S.ignore=[]; DB.kv('ignore', S.ignore); renderIgnore(); toast('Ignored spots forgotten'); break;
     case 'cropUse': { if (Crop.box){ const targets = $('#cropAll').checked ? S.pending.filter(p=>p.sel||p===Crop.p) : [Crop.p]; targets.forEach(p=>p.box={...Crop.box}); } else Crop.p.box=null; savePending(); renderTray(); $('#cropScrim').classList.remove('on'); break; }
     case 'cropClear': Crop.box=null; drawCrop(); break;
