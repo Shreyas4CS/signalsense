@@ -317,7 +317,7 @@ footer.site .fwave svg{width:200%;height:60px;animation:waveX 14s linear infinit
 main.d-main{max-width:1500px;margin:0 auto;padding:26px 24px 30px}
 .view{display:none;grid-template-columns:minmax(0,1.2fr) minmax(360px,1fr);gap:22px;align-items:start}
 .view.on{display:grid;animation:stageIn .5s var(--spring) both}
-#v-live{grid-template-columns:minmax(0,1.55fr) minmax(340px,.95fr)}
+#v-live{grid-template-columns:minmax(0,2.1fr) minmax(320px,.9fr)}
 @keyframes stageIn{from{opacity:0;transform:translateY(16px)}}
 .page-head{grid-column:1/-1;display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap}
 .page-head .kick{font-family:var(--fd);font-weight:700;font-size:13px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
@@ -591,8 +591,28 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
   #v-live .rightcol::-webkit-scrollbar-thumb{background:#C9D2E6;border-radius:8px}
   #v-live .rightcol::-webkit-scrollbar-thumb:hover{background:#AEB9D4}
   /* the camera always fits the screen height, keeping its shape */
-  #v-live .stage{width:min(100%, calc((100vh - var(--navH) - 290px) * var(--ar, 1.7778)));margin:0 auto}
+  #v-live .stage{width:min(100%, calc((100vh - var(--navH) - 200px) * var(--ar, 1.7778)));margin:0 auto}
+  #v-live > .col:not(.rightcol) > .card{padding:14px}
+  #v-live .stats{gap:8px;margin-bottom:10px}
+  #v-live .stat{display:flex;align-items:baseline;gap:8px;padding:6px 12px;border-radius:12px}
+  #v-live .stat b{font-size:20px}
+  #v-live .stat span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #v-live .camctl{margin-top:10px;gap:8px}
+  #v-live .camctl .btn{padding:8px 14px;font-size:13.5px}
+  #v-live .camctl .btn svg{width:16px;height:16px}
 }
+
+/* full screen camera / photo view */
+.stagewrap{position:relative}
+.fsbtn{position:absolute;right:10px;bottom:10px;z-index:7;width:38px;height:38px;border-radius:12px;background:rgba(27,33,64,.75);color:#fff;display:grid;place-items:center;transition:transform .2s var(--spring),background .2s}
+.fsbtn:hover{transform:scale(1.1);background:rgba(27,33,64,.92)}
+.fsbtn svg{width:20px;height:20px}
+.fsbtn .fs-out{display:none}
+.stagewrap:fullscreen{background:#0d1424;display:flex;align-items:center;justify-content:center}
+.stagewrap:fullscreen .stage{width:min(100vw, calc(100vh * var(--ar, 1.7778)))!important;max-width:100vw;border-radius:0;border:0;margin:0}
+.stagewrap:fullscreen .fs-in{display:none}
+.stagewrap:fullscreen .fs-out{display:block}
+.stagewrap:fullscreen .hud .hp{font-size:16px;padding:7px 14px}
 
 /* live calibration card */
 .calib{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:6;display:flex;gap:14px;align-items:center;background:rgba(255,255,255,.96);border-radius:20px;padding:14px 18px;box-shadow:0 20px 40px -18px rgba(27,33,64,.55);width:min(520px,calc(100% - 24px));animation:mpop .35s var(--spring) both}
@@ -1104,6 +1124,7 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
 </div>
 
 <!-- camera stage (moved between Training and Live) -->
+<div class="stagewrap" id="stageWrap">
 <div class="stage" id="stage">
   <div class="empty" id="stageEmpty"><div><div class="toyroad"><div class="car"></div><div class="car c2"></div><div class="car c3"></div></div><h4>Camera is off</h4><p>Press “Turn camera on” to start</p></div></div>
   <video id="video" playsinline muted autoplay></video>
@@ -1114,6 +1135,8 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
   <div class="linehelp hide" id="linehelp">Tap point 1 of the line</div>
   <div class="calib hidden" id="calib"></div>
   <div class="flash" id="flash"></div>
+  <button class="fsbtn" data-act="fullscreen" title="Full screen (Esc to exit)" aria-label="Full screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path class="fs-in" d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/><path class="fs-out" d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg></button>
+</div>
 </div>
 
 <!-- ============ SETTINGS ============ -->
@@ -2615,7 +2638,7 @@ function setMode(m){
   S.mode=m;
   $$('#modes button').forEach(b=>b.setAttribute('aria-selected', b.dataset.mode===m));
   movePill(); $$('.view').forEach(v=>v.classList.toggle('on', v.id==='v-'+m));
-  (m==='live' ? $('#liveSlot') : $('#trainSlot')).append($('#stage'));
+  (m==='live' ? $('#liveSlot') : $('#trainSlot')).append($('#stageWrap'));
   if (m!=='live' && Photo.on) photoStop();
   if (m==='live'){ closeFreeze(); tracks=[]; startCalibration(); } else { Cal.state='idle'; renderCal(); } trainDets=[];
   renderHud(); renderSignal(false);
@@ -2671,6 +2694,7 @@ document.addEventListener('click', async e => {
     case 'addS': addClass('s'); break;
     case 'delV': { const c=clsById('v',id); if (!confirm(`Delete “${c.name}” and all its photos?`)) return; S.vClasses=S.vClasses.filter(x=>x.id!==id); S.vSamples.filter(s=>s.cls===id).forEach(s=>DB.del('vehicles',s.id)); S.vSamples=S.vSamples.filter(s=>s.cls!==id); Brain.v.stale=true; saveMeta(); renderV(); renderCounts(); break; }
     case 'capture': capturePhoto(); break;
+    case 'fullscreen': { const w=$('#stageWrap'); if (document.fullscreenElement) document.exitFullscreen(); else (w.requestFullscreen||w.webkitRequestFullscreen).call(w); break; }
     case 'phPrev': showPhoto(Photo.i-1); break;
     case 'phNext': showPhoto(Photo.i+1); break;
     case 'phAuto': if (Photo.auto){ clearInterval(Photo.auto); Photo.auto=null; } else Photo.auto=setInterval(()=>showPhoto(Photo.i+1), 3000); renderPhotoBar(); break;
@@ -2766,7 +2790,7 @@ function renderAll(){ renderJ(); renderRuleMini(); renderIgnore(); renderTray();
    START
    ===================================================================== */
 (async function init(){
-  $('#trainSlot').append($('#stage'));
+  $('#trainSlot').append($('#stageWrap'));
   landingFx();
   window.addEventListener('resize', movePill); window.addEventListener('blur', stopHold); document.fonts?.ready.then(movePill);
   await loadAll();
