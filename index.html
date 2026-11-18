@@ -969,7 +969,7 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
         <div class="step" id="st-line">
           <h3>Step 2 · Mark the stop line</h3>
           <p class="hint">If any vehicle crosses this line on red, the AI notices and your rules kick in.</p>
-          <div class="howto">🛣️<div><b>1.</b> Point the camera at your road. <b>2.</b> Press <b>Take road photo</b> – the app finds the black tape and puts the line on it ✨. <b>3.</b> Not right? Tap <b>two points</b> near the tape and it snaps on. <b>4.</b> Name it and press <b>Save line</b>. In Live mode the line keeps following the tape.</div></div>
+          <div class="howto">🛣️<div><b>1.</b> Point the camera at your road. <b>2.</b> Press <b>Take road photo</b> – the app finds the tape line – <b>black or white</b> – and puts the stop line on it ✨. <b>3.</b> Not right? Tap <b>two points</b> near the line and it snaps on. <b>4.</b> Name it and press <b>Save line</b>. The app remembers whether you trained a black or a white line, and in Live mode it finds that same line and keeps following it.</div></div>
           <div class="row" style="margin-bottom:12px">
             <button class="btn blue" data-act="snapRoad"><svg><use href="#i-snap"/></svg>Take road photo</button>
             <label class="btn"><svg><use href="#i-up"/></svg>Upload photo<input type="file" accept="image/*" hidden id="roadUp"></label>
@@ -1177,7 +1177,7 @@ canvas.spark{width:100%;height:64px;display:block;margin-top:12px;border-radius:
           <div class="field" style="--c:var(--blue)"><label><i></i>Max vehicles tracked</label><input type="range" min="1" max="10" data-set="det.maxBoxes" style="--c:var(--blue)"><span class="val"></span></div>
           <div class="field" style="grid-template-columns:1fr auto"><label style="font-size:15px">Spot red-light jumps with</label><select data-set="det.jumpMode" style="width:auto"><option value="both">Line-jump AI if trained, otherwise tracking (recommended)</option><option value="track">Tracking only</option></select></div>
           <div class="field" style="grid-template-columns:1fr auto"><label style="font-size:15px">Also find vehicles by comparing with the empty road (finds toys on the tape)</label><span class="switch"><input type="checkbox" data-set="det.motion"><span></span></span></div>
-          <div class="field" style="grid-template-columns:1fr auto"><label style="font-size:15px">Stop line follows the black tape automatically (if the camera moves a little)</label><span class="switch"><input type="checkbox" data-set="det.autoAlign"><span></span></span></div>
+          <div class="field" style="grid-template-columns:1fr auto"><label style="font-size:15px">Stop line follows the tape line (black or white) automatically (if the camera moves a little)</label><span class="switch"><input type="checkbox" data-set="det.autoAlign"><span></span></span></div>
           <div class="field" style="grid-template-columns:1fr auto"><label style="font-size:15px">Box any object (good for toys), not only real-vehicle shapes</label><span class="switch"><input type="checkbox" data-set="det.anyObject"><span></span></span></div>
         </div>
       </div>
@@ -1578,7 +1578,7 @@ function roiBox(W, H, Lgiven){
 function roiFor(src){
   const W=src.videoWidth||src.naturalWidth||src.width, H=src.videoHeight||src.naturalHeight||src.height;
   if (src===SRC) return roiBox(W,H);   // live source: use the locked line
-  const ln=S.lines[0], tape=findTape(src, W, H, ln ? lineOf(ln) : null);
+  const ln=S.lines[0], tape=findTape(src, W, H, ln ? lineOf(ln) : null, ln?.pol);
   if (!tape) return roiBox(W,H);
   const L = ln && ln.rel ? {a:fromRel(tape, ln.rel.a, W/H), b:fromRel(tape, ln.rel.b, W/H)} : tape;
   return roiBox(W,H,L);
@@ -1777,13 +1777,31 @@ function fileToImg(f){ return new Promise((res,rej)=>{ const i=new Image(); i.on
 /* =====================================================================
    TRAINING · ROAD LINE
    ===================================================================== */
-/* ---- find the dark tape on the road: the longest thin dark strip in the picture ---- */
+/* ---- find the stop line on the road: the longest thin strip in the picture ----
+   The line can be DARK (black tape on a light road) or LIGHT (white tape / paper on a black road).
+   pol = 'dark' | 'light' → look only for that kind (what was trained); anything else → try both, keep the best. */
 const tapeC = document.createElement('canvas'), tapeX = tapeC.getContext('2d', {willReadFrequently:true});
-function findTape(src, sw, sh, hint){
+const POL_NAME = {dark:'black', light:'white'};
+function findTape(src, sw, sh, hint, pol){
   const W=200, H=Math.max(40, Math.round(W*sh/sw)); tapeC.width=W; tapeC.height=H; tapeX.drawImage(src,0,0,W,H);
-  const px=tapeX.getImageData(0,0,W,H).data, N=W*H, g=new Uint8Array(N), hist=new Uint32Array(256); let mean=0;
-  for (let i=0;i<N;i++){ const v=(px[i*4]*.3+px[i*4+1]*.59+px[i*4+2]*.11)|0; g[i]=v; hist[v]++; mean+=v/N; }
-  // Otsu threshold, but never call "mid-grey" dark
+  const px=tapeX.getImageData(0,0,W,H).data, N=W*H, gray=new Uint8Array(N), sat=new Uint8Array(N);
+  for (let i=0;i<N;i++){ const r=px[i*4], g=px[i*4+1], b=px[i*4+2], mx=Math.max(r,g,b), mn=Math.min(r,g,b);
+    gray[i]=(r*.3+g*.59+b*.11)|0; sat[i]=mx ? ((mx-mn)/mx*255)|0 : 0; }
+  const modes = (pol==='dark' || pol==='light') ? [pol] : ['dark','light'];
+  let best=null;
+  for (const m of modes){
+    // turn the picture into "how line-like is each pixel" (low = line):
+    // dark → plain brightness · light → inverted brightness, and coloured paint (yellow, green, blue…) never counts as white
+    const g = m==='dark' ? gray : gray.map((v,i)=> sat[i]>80 ? 255 : 255-v);
+    const r = tapeIn(g, W, H, hint);
+    if (r && (!best || r.score>best.score)) best={...r, pol:m};
+  }
+  return best;
+}
+function tapeIn(g, W, H, hint){
+  const N=W*H, hist=new Uint32Array(256); let mean=0;
+  for (let i=0;i<N;i++){ hist[g[i]]++; mean+=g[i]/N; }
+  // Otsu threshold, but never call "mid-grey" a line
   let sum=0; for (let i=0;i<256;i++) sum+=i*hist[i]; let sB=0,wB=0,best=0,T=80;
   for (let i=0;i<256;i++){ wB+=hist[i]; if(!wB) continue; const wF=N-wB; if(!wF) break; sB+=i*hist[i]; const mB=sB/wB, mF=(sum-sB)/wF, v=wB*wF*(mB-mF)**2; if (v>best){ best=v; T=i; } }
   T = Math.min(T, mean*.72);
@@ -1800,6 +1818,7 @@ function findTape(src, sw, sh, hint){
     const elong=Math.sqrt(l1/l2), len=Math.sqrt(12*l1), ang=.5*Math.atan2(2*b, a-d);
     Object.assign(c, {mx, my, l2, len, elong, ang});
     if (c.n < N*.003 || elong<3.5 || len<W*.15) continue;
+    if (Math.sqrt(12*l2) > W*.12) continue;   // a stop line is thin – a wide black road or a big white area is not the line
     let score=len*Math.min(elong,15);
     if (hint){ const hx=(hint.a.x+hint.b.x)/2*W, hy=(hint.a.y+hint.b.y)/2*H, ha=Math.atan2((hint.b.y-hint.a.y)*H,(hint.b.x-hint.a.x)*W);
       const dist=Math.abs(-Math.sin(ang)*(hx-mx)+Math.cos(ang)*(hy-my)); let da=Math.abs(ang-ha)%Math.PI; da=Math.min(da, Math.PI-da);
@@ -1814,7 +1833,7 @@ function findTape(src, sw, sh, hint){
   for (let i=0;i<N;i++){ if (!ids.has(lab[i])) continue; const t=(i%W-pick.mx)*ux+(((i/W)|0)-pick.my)*uy; if (t<t0) t0=t; if (t>t1) t1=t; }
   let a={x:(pick.mx+ux*t0)/W, y:(pick.my+uy*t0)/H}, b={x:(pick.mx+ux*t1)/W, y:(pick.my+uy*t1)/H};
   if (a.x>b.x) [a,b]=[b,a];
-  return {a, b};
+  return {a, b, score:ps};
 }
 /* the line used right now (follows the tape live if "auto-align" is on) */
 const lineOf = ln => ({a: ln._a || ln.a, b: ln._b || ln.b});
@@ -1828,7 +1847,8 @@ function alignLines(force){
   if (!force && !S.settings.det.autoAlign){ LW.lock=true; return; }   // follow switched off: keep the line where it was locked
   const A=VW()/VH(); let locked=0;
   for (const ln of S.lines){
-    const cur=lineOf(ln); let r=findTape(SRC, VW(), VH(), ln._tape || cur); if (!r) continue;
+    const cur=lineOf(ln); let r=findTape(SRC, VW(), VH(), ln._tape || cur, ln.pol); if (!r) continue;
+    if (!ln.pol && r.pol && Cal.state!=='calib'){ ln.pol=r.pol; DB.put('lines', plainLine(ln)); }   // older line: remember if it is black or white
     if (!ln.rel){   // older line: learn how it sits on the tape the first time we see them together
       if (perpTo(cur, r, A) > .15) continue;
       ln.rel={a:relTo(r, ln.a, A), b:relTo(r, ln.b, A)}; DB.put('lines', plainLine(ln));
@@ -1874,7 +1894,7 @@ function openFreeze(drawFn, w, h){
   drawFn(LineEd.snap.getContext('2d')); LineEd.pts=[]; LineEd.active=true;
   freeze.classList.remove('hide'); setStageAR(w, h);
   const r = findTape(LineEd.snap, w, h, null);
-  if (r){ LineEd.pts=[r.a, r.b]; toast('✨ Found the tape – the line is placed on it. Tap two points to change it.', 'ok'); }
+  if (r){ LineEd.pts=[r.a, r.b]; toast(`✨ Found the ${POL_NAME[r.pol]} line – the stop line is placed on it. Tap two points to change it.`, 'ok'); }
   drawFreeze(); camUI();
 }
 function closeFreeze(){ LineEd.active=false; LineEd.pts=[]; freeze.classList.add('hide'); $('#linehelp').classList.add('hide'); $('#saveLineBtn').disabled=true; if (Cam.on) setStageAR(VW(), VH()); camUI(); }
@@ -1896,7 +1916,7 @@ freeze.addEventListener('pointerdown', e => {
     const r = findTape(LineEd.snap, freeze.width, freeze.height, {a:LineEd.pts[0], b:LineEd.pts[1]});
     if (r){ const A=freeze.width/freeze.height, dx=(r.b.x-r.a.x)*A, dy=r.b.y-r.a.y, l=Math.hypot(dx,dy)||1, m={x:(LineEd.pts[0].x+LineEd.pts[1].x)/2, y:(LineEd.pts[0].y+LineEd.pts[1].y)/2};
       const dist=Math.abs((-dy*(m.x-r.a.x)*A + dx*(m.y-r.a.y))/l);
-      if (dist < .12){ LineEd.pts=[r.a, r.b]; toast('✨ Snapped to the tape', 'ok'); } }
+      if (dist < .12){ LineEd.pts=[r.a, r.b]; toast(`✨ Snapped to the ${POL_NAME[r.pol]} line`, 'ok'); } }
   }
   drawFreeze();
 });
@@ -1908,11 +1928,12 @@ function saveLine(){
   const ln = {id:uid(), name:($('#lineName').value||'Stop line').trim(), a:LineEd.pts[0], b:LineEd.pts[1], thumb:t.toDataURL('image/jpeg',.75)};
   // remember where the line sits on the tape, so it can follow the tape when the camera moves
   const A=freeze.width/freeze.height, tape=findTape(LineEd.snap, freeze.width, freeze.height, {a:ln.a, b:ln.b});
-  if (tape && perpTo(ln, tape, A) < .15){ ln.rel={a:relTo(tape, ln.a, A), b:relTo(tape, ln.b, A)}; ln.tapeRef=tape; }
-  S.lines.push(ln); DB.put('lines', ln); closeFreeze(); renderLines(); renderCounts(); toast(`“${ln.name}” saved – the AI now watches this line 🛣️`, 'ok');
+  if (tape && perpTo(ln, tape, A) < .15){ ln.rel={a:relTo(tape, ln.a, A), b:relTo(tape, ln.b, A)}; ln.tapeRef={a:tape.a, b:tape.b}; ln.pol=tape.pol; }
+  S.lines.push(ln); DB.put('lines', ln); closeFreeze(); renderLines(); renderCounts();
+  toast(`“${esc(ln.name)}” saved${ln.pol?` on the ${POL_NAME[ln.pol]} line`:''} – in Live mode the AI looks for this line 🛣️`, 'ok');
 }
 function renderLines(){
-  $('#lineList').innerHTML = S.lines.length ? S.lines.map(l=>`<div class="lineitem"><img src="${l.thumb}" alt=""><div class="grow"><b>${esc(l.name)}</b><div class="hint">Watching for vehicles crossing</div></div><button class="btn sm danger" data-act="delLine" data-id="${l.id}">${icon('i-trash')}Delete</button></div>`).join('')
+  $('#lineList').innerHTML = S.lines.length ? S.lines.map(l=>`<div class="lineitem"><img src="${l.thumb}" alt=""><div class="grow"><b>${esc(l.name)}</b><div class="hint">${l.pol?`Follows the <b>${POL_NAME[l.pol]}</b> line · `:''}Watching for vehicles crossing</div></div><button class="btn sm danger" data-act="delLine" data-id="${l.id}">${icon('i-trash')}Delete</button></div>`).join('')
     : `<div class="emptyhint">No lines yet. Take a road photo and tap two points.</div>`;
 }
 
@@ -2430,7 +2451,7 @@ function renderCal(){
   const box = {
     calib:`<div class="calring" style="--p:${pct}"><span>${pct}%</span></div><div><b>Calibrating the stop line…</b><p>Keep the camera still. Vehicles will be detected after the line is locked.</p></div>`,
     found:`<div class="calok">✓</div><div><b>Stop line found!</b><p>Take the vehicles <b>off the road</b>, check the line sits on the tape, then lock it. (The AI remembers the empty road.)</p><div class="row" style="margin-top:10px"><button class="btn green" data-act="lockLine">🔒 Lock line &amp; start</button><button class="btn sm" data-act="recal">↻ Recalibrate</button></div></div>`,
-    failed:`<div class="calok bad">!</div><div><b>Can't find the black tape</b><p>Make sure the camera can see the whole tape, with good light.</p><div class="row" style="margin-top:10px"><button class="btn sun" data-act="recal">↻ Try again</button><button class="btn sm" data-act="useSaved">Use the saved line</button></div></div>`,
+    failed:`<div class="calok bad">!</div><div><b>Can't find the ${S.lines[0]?.pol ? POL_NAME[S.lines[0].pol] : 'tape'} line</b><p>Make sure the camera can see the whole line, with good light.</p><div class="row" style="margin-top:10px"><button class="btn sun" data-act="recal">↻ Try again</button><button class="btn sm" data-act="useSaved">Use the saved line</button></div></div>`,
     noline:`<div class="calok bad">!</div><div><b>No stop line saved yet</b><p>Draw one in Training → Road line, or watch vehicles without a line.</p><div class="row" style="margin-top:10px"><button class="btn blue" data-act="goLine">Draw a line</button><button class="btn sm" data-act="noLineGo">Start without a line</button></div></div>`
   }[st];
   el.classList.toggle('hidden', !box || S.mode!=='live' || !(Cam.on || Photo.on));
@@ -2716,7 +2737,7 @@ document.addEventListener('click', async e => {
     case 'delS': { const c=clsById('s',id); if (!confirm(`Delete “${c.name}” and all its clips?`)) return; S.sClasses=S.sClasses.filter(x=>x.id!==id); S.sSamples.filter(s=>s.cls===id).forEach(s=>DB.del('sounds',s.id)); S.sSamples=S.sSamples.filter(s=>s.cls!==id); Brain.s.stale=true; saveMeta(); renderS(); renderCounts(); break; }
     case 'undoS': { const last=[...S.sSamples].reverse().find(s=>s.cls===id); if (last){ S.sSamples=S.sSamples.filter(s=>s!==last); DB.del('sounds', last.id); Brain.s.stale=true; renderS(); renderCounts(); } break; }
     case 'snapRoad': if (!Cam.on){ toast('Turn the camera on first, or upload a road photo 📷'); return; } openFreeze(c=>c.drawImage(video,0,0,VW(),VH()), VW(), VH()); break;
-    case 'findLine': { if (!LineEd.active){ toast('Take a road photo first'); return; } const r=findTape(LineEd.snap, freeze.width, freeze.height, null); if (r){ LineEd.pts=[r.a,r.b]; drawFreeze(); toast('✨ Line placed on the tape','ok'); } else toast('Could not find a dark tape line – tap two points instead','warn'); break; }
+    case 'findLine': { if (!LineEd.active){ toast('Take a road photo first'); return; } const r=findTape(LineEd.snap, freeze.width, freeze.height, null); if (r){ LineEd.pts=[r.a,r.b]; drawFreeze(); toast(`✨ Line placed on the ${POL_NAME[r.pol]} line`,'ok'); } else toast('Could not find a black or white line – tap two points instead','warn'); break; }
     case 'clearPts': if (LineEd.active){ LineEd.pts=[]; drawFreeze(); } break;
     case 'cancelLine': closeFreeze(); break;
     case 'saveLine': saveLine(); break;
